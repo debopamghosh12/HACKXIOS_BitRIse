@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pill, Home, Search, Package, Settings, LogOut } from 'lucide-react';
+import { Pill, Home, Search, Package, Settings, LogOut, User, Plus, Check, Users } from 'lucide-react';
 import { AppState, INITIAL_STATE, Step, WizardStep, ActiveTab, Medicine, RoutineItem } from './types';
 import { Wizard } from './pages/Wizard';
 import { SubscriptionPage } from './pages/SubscriptionPage';
@@ -13,6 +13,7 @@ import { Stepper } from './components/UI';
 const App: React.FC = () => {
     const [state, setState] = useState<AppState>(INITIAL_STATE);
     const [isCheckingSession, setIsCheckingSession] = useState(true);
+    const [showProfileMenu, setShowProfileMenu] = useState(false); // Local state for dropdown
 
     const updateState = (updates: Partial<AppState>) => {
         setState(prev => ({ ...prev, ...updates }));
@@ -28,16 +29,18 @@ const App: React.FC = () => {
                 if (session?.user) {
                     console.log('✅ Existing session found, auto-logging in...');
 
-                    // Fetch user profile
-                    const { data: profile } = await supabase
+                    // Fetch ALL user profiles
+                    const { data: profiles } = await supabase
                         .from('patients')
                         .select('*')
-                        .eq('id', session.user.id)
-                        .single();
+                        .eq('owner_id', session.user.id);
+
+                    // Default to first profile if exists
+                    const activeProfile = profiles && profiles.length > 0 ? profiles[0] : null;
 
                     // Fetch active subscriptions for auto-login
                     const { getUserSubscriptions } = await import('./services/api');
-                    const patientId = profile?.patient_id;
+                    const patientId = activeProfile?.patient_id;
                     let fetchedMedicines: any[] = [];
                     let activePlan = null;
 
@@ -60,17 +63,34 @@ const App: React.FC = () => {
                         activeTab: 'home',
                         medicines: fetchedMedicines,
                         selectedPlan: activePlan,
+                        profiles: profiles?.map(p => ({
+                            ...p,
+                            id: p.patient_id, // Map DB generic ID to frontend ID
+                            patientId: p.patient_id,
+                            ownerId: p.owner_id,
+                            fullName: p.full_name,
+                            dateOfBirth: p.date_of_birth,
+                            bloodGroup: p.blood_group,
+                            chronicDiseases: p.chronic_diseases,
+                        })) || [],
                         patient: {
-                            fullName: profile?.full_name || '',
+                            fullName: activeProfile?.full_name || '',
                             email: session.user.email || '',
-                            phone: profile?.phone || '',
-                            id: session.user.id,
-                            patientId: profile?.patient_id,
-                            dateOfBirth: profile?.date_of_birth,
-                            gender: profile?.gender,
-                            bloodGroup: profile?.blood_group,
-                            allergies: profile?.allergies || [],
-                            chronicDiseases: profile?.chronic_diseases || []
+                            phone: activeProfile?.phone || '',
+
+                            // Actually handleLogin sets id: activeProfile.patient_id. Let's match that.
+                            // WAIT: In handleLogin (line 182), id is set to activeProfile.patient_id.
+                            // In old useEffect (line 67), id was session.user.id. This is a mismatch!
+                            // I should match handleLogin: id = activeProfile.patient_id
+
+                            // Fix: Match handleLogin logic exactly
+                            id: activeProfile?.patient_id || '',
+                            patientId: activeProfile?.patient_id,
+                            dateOfBirth: activeProfile?.date_of_birth,
+                            gender: activeProfile?.gender,
+                            bloodGroup: activeProfile?.blood_group,
+                            allergies: activeProfile?.allergies || [],
+                            chronicDiseases: activeProfile?.chronic_diseases || []
                         }
                     });
 
@@ -126,24 +146,30 @@ const App: React.FC = () => {
         const { data: { user } } = await supabase.auth.getUser();
 
         if (user) {
-            // Fetch user profile from patients table
-            const { data: profile } = await supabase
+            // Fetch ALL user profiles (where owner_id = auth.uid)
+            const { data: profiles, error } = await supabase
                 .from('patients')
                 .select('*')
-                .eq('id', user.id)
-                .single();
+                .eq('owner_id', user.id);
 
-            // Fetch active subscriptions
-            // Note: We need to import getUserSubscriptions. It might not be available in a simple import if api.ts is not fully updated in the import cache, but generally safe.
+            // Default to first profile if exists
+            const activeProfile = profiles && profiles.length > 0 ? profiles[0] : null;
+
+            if (profiles && profiles.length > 0) {
+                console.log('Found profiles:', profiles.length, 'Active:', activeProfile?.full_name);
+            } else {
+                console.log('No patient profiles found for user. Wizard will create one.');
+            }
+
+            // Fetch active subscriptions for the active profile
             const { getUserSubscriptions } = await import('./services/api');
-            const patientId = profile?.patient_id;
+            const patientId = activeProfile?.patient_id; // UUID from DB
             let fetchedMedicines: any[] = [];
             let activePlan = null;
 
             if (patientId) {
                 fetchedMedicines = await getUserSubscriptions(patientId);
                 if (fetchedMedicines.length > 0) {
-                    // Reconstruct a "Active Plan" so the SubscriptionPage renders
                     activePlan = {
                         id: 'active-plan',
                         name: 'My Medication Plan',
@@ -159,24 +185,38 @@ const App: React.FC = () => {
                 activeTab: 'home',
                 medicines: fetchedMedicines,
                 selectedPlan: activePlan,
+                profiles: profiles?.map(p => ({
+                    ...p,
+                    id: p.patient_id, // Map DB generic ID to frontend ID
+                    patientId: p.patient_id,
+                    ownerId: p.owner_id,
+                    fullName: p.full_name,
+                    dateOfBirth: p.date_of_birth,
+                    bloodGroup: p.blood_group,
+                    chronicDiseases: p.chronic_diseases,
+                    // Map other fields as needed
+                })) || [],
                 patient: {
                     ...state.patient,
-                    id: user.id,
-                    patientId: profile?.patient_id,
+                    id: activeProfile?.patient_id || '', // Current Profile ID
+                    patientId: activeProfile?.patient_id || '',
+                    ownerId: user.id, // Auth ID
                     email: user.email || state.patient.email,
-                    fullName: profile?.full_name || state.patient.fullName,
-                    phone: profile?.phone || state.patient.phone,
-                    dateOfBirth: profile?.date_of_birth,
-                    gender: profile?.gender,
-                    bloodGroup: profile?.blood_group,
-                    allergies: profile?.allergies || [],
-                    chronicDiseases: profile?.chronic_diseases || []
+                    fullName: activeProfile?.full_name || state.patient.fullName,
+                    phone: activeProfile?.phone || state.patient.phone,
+                    dateOfBirth: activeProfile?.date_of_birth,
+                    gender: activeProfile?.gender,
+                    bloodGroup: activeProfile?.blood_group,
+                    address: activeProfile?.address,
+                    allergies: activeProfile?.allergies || [],
+                    chronicDiseases: activeProfile?.chronic_diseases || []
                 }
             });
         } else {
             updateState({ step: 'app', activeTab: 'home' });
         }
     };
+
 
     const handleTabChange = (tab: ActiveTab) => {
         updateState({ activeTab: tab });
@@ -216,11 +256,58 @@ const App: React.FC = () => {
 
             // Reset state to initial
             setState(INITIAL_STATE);
+            setShowProfileMenu(false);
 
             console.log('✅ Logged out successfully');
         } catch (error) {
             console.error('Logout error:', error);
         }
+    };
+
+    const handleSwitchProfile = async (profileId: string) => {
+        const targetProfile = state.profiles.find(p => p.patientId === profileId);
+        if (!targetProfile) return;
+
+        console.log('Switching to profile:', targetProfile.fullName);
+
+        // Fetch subscriptions for this profile
+        const { getUserSubscriptions } = await import('./services/api');
+        let fetchedMedicines: any[] = [];
+        try {
+            fetchedMedicines = await getUserSubscriptions(profileId);
+        } catch (e) {
+            console.error('Error fetching subs for switched profile:', e);
+        }
+
+        updateState({
+            activeTab: 'home',
+            medicines: fetchedMedicines,
+            patient: targetProfile, // Set active patient
+            wizardStep: 'patient' // Reset wizard
+        });
+        setShowProfileMenu(false);
+    };
+
+    const handleAddNewProfile = () => {
+        console.log('Adding new profile...');
+        // Reset patient state to partial empty (keep ownerId/Email if needed, or clear all)
+        // We need to keep ownerId so we know who it belongs to, but mostly the Wizard should handle it.
+        // Actually, Wizard uses auth.user.id for ownerId.
+
+        updateState({
+            activeTab: 'search', // Go to Wizard
+            wizardStep: 'patient',
+            medicines: [], // Clear medicines
+            patient: {
+                ...INITIAL_STATE.patient, // Reset to empty
+                email: state.patient.email, // Keep email for convenience? Or clear. Let's keep email.
+                // IMPORTANT: Ensure ID is NULL so wizard upsert creates NEW
+                id: undefined,
+                patientId: undefined,
+                ownerId: state.patient.ownerId
+            }
+        });
+        setShowProfileMenu(false);
     };
 
 
@@ -315,10 +402,70 @@ const App: React.FC = () => {
                             <LogOut className="w-4 h-4" />
                             <span>Logout</span>
                         </button>
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary-500 to-teal-400 p-0.5 shadow-md cursor-pointer hover:scale-105 transition-transform" onClick={() => handleTabChange('settings')}>
-                            <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-xs font-bold text-primary-600">
-                                {state.patient.fullName ? state.patient.fullName.charAt(0) : 'JD'}
+                        <div className="relative">
+                            <div
+                                className="w-9 h-9 rounded-full bg-gradient-to-tr from-primary-500 to-teal-400 p-0.5 shadow-md cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => setShowProfileMenu(!showProfileMenu)}
+                            >
+                                <div className="w-full h-full rounded-full bg-white flex items-center justify-center text-xs font-bold text-primary-600">
+                                    {state.patient.fullName ? state.patient.fullName.charAt(0) : 'JD'}
+                                </div>
                             </div>
+
+                            {/* Profile Dropdown Menu */}
+                            {showProfileMenu && (
+                                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden z-[100] animate-in fade-in zoom-in-95 duration-200">
+                                    <div className="p-3 border-b border-slate-50">
+                                        <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-2 px-2">Switch Profile</p>
+                                        <div className="space-y-1">
+                                            {state.profiles.map(profile => (
+                                                <button
+                                                    key={profile.patientId}
+                                                    onClick={() => handleSwitchProfile(profile.patientId!)}
+                                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${state.patient.patientId === profile.patientId
+                                                        ? 'bg-blue-50 text-blue-700'
+                                                        : 'hover:bg-slate-50 text-slate-600'
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${state.patient.patientId === profile.patientId ? 'bg-blue-200 text-blue-700' : 'bg-slate-200 text-slate-500'
+                                                            }`}>
+                                                            {profile.fullName.charAt(0)}
+                                                        </div>
+                                                        <span className="truncate max-w-[120px]">{profile.fullName}</span>
+                                                    </div>
+                                                    {state.patient.patientId === profile.patientId && <Check className="w-3 h-3" />}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="p-2">
+                                        <button
+                                            onClick={handleAddNewProfile}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors font-medium"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Add New Profile
+                                        </button>
+                                        <div className="h-px bg-slate-100 my-1"></div>
+                                        <button
+                                            onClick={() => { handleTabChange('settings'); setShowProfileMenu(false); }}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                                        >
+                                            <Settings className="w-4 h-4" />
+                                            Settings
+                                        </button>
+                                        <button
+                                            onClick={handleLogout}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            Logout
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </nav>
@@ -375,6 +522,31 @@ const App: React.FC = () => {
                                     nextStep={nextWizardStep}
                                     prevStep={prevWizardStep}
                                     goToDashboard={finishWizard}
+                                    refreshProfiles={async () => {
+                                        const { supabase } = await import('./services/supabase');
+                                        const { data: { user } } = await supabase.auth.getUser();
+                                        if (user) {
+                                            const { data: profiles } = await supabase
+                                                .from('patients')
+                                                .select('*')
+                                                .eq('owner_id', user.id);
+
+                                            if (profiles) {
+                                                updateState({
+                                                    profiles: profiles.map(p => ({
+                                                        ...p,
+                                                        id: p.patient_id,
+                                                        patientId: p.patient_id,
+                                                        ownerId: p.owner_id,
+                                                        fullName: p.full_name,
+                                                        dateOfBirth: p.date_of_birth,
+                                                        bloodGroup: p.blood_group,
+                                                        chronicDiseases: p.chronic_diseases,
+                                                    }))
+                                                });
+                                            }
+                                        }
+                                    }}
                                 />
                             </div>
                         )}
@@ -389,7 +561,12 @@ const App: React.FC = () => {
                         )}
 
                         {state.activeTab === 'settings' && (
-                            <SettingsPage state={state} updateState={updateState} />
+                            <SettingsPage
+                                state={state}
+                                updateState={updateState}
+                                onSwitchProfile={handleSwitchProfile}
+                                onAddProfile={handleAddNewProfile}
+                            />
                         )}
                     </>
                 )}

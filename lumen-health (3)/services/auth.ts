@@ -115,7 +115,8 @@ export const getUserProfile = async (userId: string): Promise<{ profile: UserPro
     const { data, error } = await supabase
       .from('patients')
       .select('*')
-      .eq('id', userId)
+      .eq('owner_id', userId) // Use owner_id (Auth ID)
+      .limit(1)
       .single();
 
     return { profile: data, error };

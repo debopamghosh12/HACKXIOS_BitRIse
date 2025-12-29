@@ -3,9 +3,9 @@ export type WizardStep = 'patient' | 'diagnosis' | 'medicines' | 'plan' | 'payme
 export type ActiveTab = 'home' | 'search' | 'subscription' | 'settings';
 
 export interface Patient {
-  id?: string; // Auth UUID (Primary Key of patients table)
-  patientId?: string; // Generated UUID (Unique, used for FK relationships)
-  userId?: string; // Owner ID (for future multi-patient support)
+  id?: string; // The Profille ID (PK: patient_id) - kept as 'id' for frontend compatibility or standard
+  patientId?: string; // Explicit alias for clarity (matches DB column patient_id)
+  ownerId?: string; // The Auth User ID (FK: owner_id)
   email: string;
   fullName: string;
   phone: string;
@@ -14,7 +14,8 @@ export interface Patient {
   bloodGroup?: string;
   allergies?: string[];
   chronicDiseases?: string[];
-  conditions?: string; // Keep for backward compatibility
+  conditions?: string;
+  address?: string; // Added address
 }
 
 export interface Diagnosis {
@@ -80,6 +81,7 @@ export interface AppState {
   takenMeds: string[]; // Keep for backward compatibility if needed, or remove later
   routineItems: RoutineItem[];
   completedRoutineIds: string[];
+  profiles: Patient[]; // Store all user profiles
 }
 
 export interface RoutineItem {
@@ -114,4 +116,5 @@ export const INITIAL_STATE: AppState = {
   takenMeds: [],
   routineItems: [],
   completedRoutineIds: [],
+  profiles: [],
 };

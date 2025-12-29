@@ -13,7 +13,7 @@ interface WizardProps {
   updateState: (updates: Partial<AppState>) => void;
   nextStep: () => void;
   prevStep: () => void;
-  goToDashboard: () => void;
+  refreshProfiles?: () => void;
 }
 
 const fadeVariants: Variants = {
@@ -23,7 +23,7 @@ const fadeVariants: Variants = {
 };
 
 // 1. Patient Form
-const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep }) => {
+const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refreshProfiles }) => {
   const [showAllergyOther, setShowAllergyOther] = useState(false);
   const [showDiseaseOther, setShowDiseaseOther] = useState(false);
   const [customAllergy, setCustomAllergy] = useState('');
@@ -43,60 +43,76 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep }) =>
       const { supabase } = await import('../services/supabase');
       const { data: { user } } = await supabase.auth.getUser();
 
-      if (user) {
-        // Update patient ID in state if not already set
-        if (!state.patient.id) {
-          updateState({
-            patient: { ...state.patient, id: user.id }
-          });
+      if (!user) {
+        alert('You must be logged in to save profile.');
+        setIsSaving(false);
+        return;
+      }
+
+      // Prepare patient data
+      const patientPayload = {
+        owner_id: user.id, // Link to Auth User
+        // If we have a patientId, use it to update. If not, don't send it (let DB generate)
+        ...(state.patient.patientId ? { patient_id: state.patient.patientId } : {}),
+        full_name: state.patient.fullName,
+        email: state.patient.email,
+        phone: state.patient.phone,
+        date_of_birth: state.patient.dateOfBirth,
+        gender: state.patient.gender,
+        blood_group: state.patient.bloodGroup,
+        allergies: selectedAllergies,
+        chronic_diseases: selectedDiseases,
+        address: state.patient.address
+      };
+
+      console.log('Upserting patient profile:', patientPayload);
+
+      const { data: patientData, error: upsertError } = await supabase
+        .from('patients')
+        .upsert(patientPayload, {
+          onConflict: 'patient_id' // Primary Key
+        })
+        .select()
+        .single();
+
+      if (upsertError || !patientData) {
+        console.error('CRITICAL: Failed to create/update patient profile.', upsertError);
+        alert('Failed to save patient profile. Please try again. ' + (upsertError?.message || ''));
+        setIsSaving(false); // Stop here
+        return;
+      }
+
+      if (patientData) {
+        console.log('Patient information saved successfully', patientData);
+        console.log('Generated patient_id:', patientData.patient_id);
+
+        // Store the generated patient_id UUID for FK relationships
+        updateState({
+          patient: {
+            ...state.patient,
+            id: patientData.patient_id, // Main ID for frontend
+            patientId: patientData.patient_id, // Explicit
+            ownerId: user.id
+          }
+        });
+
+        // REFRESH PROFILES LIST
+        if (refreshProfiles) {
+          console.log('Refreshing profiles list...');
+          await refreshProfiles();
         }
 
-        // Ensure patient record exists in database (upsert)
-        // Ensure patient record exists in database (upsert)
-        const { data: patientData, error: upsertError } = await supabase
-          .from('patients')
-          .upsert({
-            id: user.id,
-            user_id: user.id, // Ensure user_id is set
-            full_name: state.patient.fullName,
-            email: state.patient.email,
-            phone: state.patient.phone,
-            date_of_birth: state.patient.dateOfBirth,
-            gender: state.patient.gender,
-            blood_group: state.patient.bloodGroup,
-            allergies: selectedAllergies,
-            chronic_diseases: selectedDiseases,
-          }, {
-            onConflict: 'id'
-          })
-          .select()
-          .single();
-
-        if (upsertError) {
-          console.error('Error upserting patient:', upsertError);
-        } else if (patientData) {
-          console.log('Patient information saved successfully', patientData);
-          console.log('Generated patient_id:', patientData.patient_id);
-          // Store the generated patient_id UUID for FK relationships
-          updateState({
-            patient: {
-              ...state.patient,
-              patientId: patientData.patient_id
-            }
-          });
-          console.log('Updated state with patientId:', patientData.patient_id);
-        }
+        console.log('Updated state with patientId:', patientData.patient_id);
       }
 
       nextStep();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving patient info:', error);
-      // Continue anyway - don't block user progress
-      nextStep();
-    } finally {
+      alert('An error occurred: ' + error.message);
       setIsSaving(false);
     }
   };
+
 
   const allergyOptions = ['None', 'Peanuts', 'Tree Nuts', 'Dairy', 'Eggs', 'Soy', 'Wheat', 'Fish', 'Shellfish', 'Penicillin', 'Dust', 'Pollen', 'Other'];
   const diseaseOptions = ['None', 'Diabetes', 'Hypertension', 'Asthma', 'Thyroid', 'Heart Disease', 'Arthritis', 'Other'];
@@ -846,8 +862,11 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
     console.log('Medicines Count:', state.medicines.length);
     console.log('========================');
 
-    if (!state.patient.patientId || !state.selectedPlan) {
-      const errorMsg = !state.patient.patientId
+    // FALBACK: If patientId is missing but id exists (and is a UUID), use id.
+    const effectivePatientId = state.patient.patientId || state.patient.id;
+
+    if (!effectivePatientId || !state.selectedPlan) {
+      const errorMsg = !effectivePatientId
         ? 'Missing patient ID - Please complete patient information first'
         : 'Missing plan selection';
       setError(errorMsg);

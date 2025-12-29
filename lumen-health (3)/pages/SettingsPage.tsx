@@ -1,63 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Bell, Shield, LogOut, ChevronRight, Star, Clock, Calendar, Loader2 } from 'lucide-react';
+import { User, Mail, Bell, Shield, LogOut, ChevronRight, Star, Clock, Calendar, Loader2, Plus, Check } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/UI';
 import { AppState, NotificationSettings } from '../types';
-import { getCurrentUser, getUserProfile, signOut } from '../services/auth';
+import { signOut } from '../services/auth';
 
 interface SettingsPageProps {
   state: AppState;
   updateState: (updates: Partial<AppState>) => void;
+  onSwitchProfile: (profileId: string) => void;
+  onAddProfile: () => void;
 }
 
-export const SettingsPage: React.FC<SettingsPageProps> = ({ state, updateState }) => {
-  const { notificationSettings } = state;
-  const [isLoading, setIsLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState<string>('');
-  const [userName, setUserName] = useState<string>('');
+export const SettingsPage: React.FC<SettingsPageProps> = ({ state, updateState, onSwitchProfile, onAddProfile }) => {
+  const { notificationSettings, patient, profiles } = state;
   const [isSigningOut, setIsSigningOut] = useState(false);
-
-  // Fetch current user data on mount
-  useEffect(() => {
-    const fetchUserData = async () => {
-      setIsLoading(true);
-      try {
-        const { user, error } = await getCurrentUser();
-
-        if (error || !user) {
-          console.error('Error fetching user:', error);
-          setIsLoading(false);
-          return;
-        }
-
-        setUserEmail(user.email || '');
-
-        // Fetch user profile from patients table
-        const { profile, error: profileError } = await getUserProfile(user.id);
-
-        if (!profileError && profile) {
-          setUserName(profile.full_name || '');
-
-          // Update app state with user data
-          updateState({
-            patient: {
-              ...state.patient,
-              fullName: profile.full_name || '',
-              email: user.email || '',
-              phone: profile.phone || '',
-              address: profile.address || '',
-            }
-          });
-        }
-      } catch (err) {
-        console.error('Error loading user data:', err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchUserData();
-  }, []);
 
   const handleSignOut = async () => {
     setIsSigningOut(true);
@@ -78,13 +35,12 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ state, updateState }
           fullName: '',
           email: '',
           phone: '',
-          address: '',
-          dateOfBirth: '',
         },
         medicines: [],
         takenMeds: [],
         routineItems: [],
         completedRoutineIds: [],
+        profiles: []
       });
     } catch (err) {
       console.error('Unexpected error during sign out:', err);
@@ -116,7 +72,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ state, updateState }
         updateSettings('pushEnabled', true);
         new Notification("Notifications Enabled", {
           body: "You will now receive refill reminders.",
-          icon: "/favicon.ico" // Assuming favicon exists or it will just be blank
+          icon: "/favicon.ico"
         });
       } else {
         alert("Permission denied for notifications. Please enable them in your browser settings.");
@@ -135,47 +91,78 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ state, updateState }
     >
       <div className="text-center mb-8">
         <h1 className="text-3xl font-light text-slate-800">Settings</h1>
-        <p className="text-slate-500 font-light mt-1">Manage your account and preferences.</p>
+        <p className="text-slate-500 font-light mt-1">Manage your account and profiles.</p>
       </div>
+
+      {/* Profiles Management */}
+      <section>
+        <h3 className="text-sm font-medium text-slate-500 uppercase tracking-widest mb-4 ml-2">Profiles</h3>
+        <GlassCard className="space-y-4">
+          <div className="space-y-2">
+            {profiles && profiles.length > 0 ? (
+              profiles.map(profile => (
+                <div
+                  key={profile.patientId}
+                  onClick={() => onSwitchProfile(profile.patientId!)}
+                  className={`flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${patient.patientId === profile.patientId
+                      ? 'bg-blue-50 border-blue-200 shadow-sm'
+                      : 'bg-white/50 border-slate-100 hover:border-blue-200 hover:bg-slate-50'
+                    }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-sm ${patient.patientId === profile.patientId
+                        ? 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white'
+                        : 'bg-slate-200 text-slate-500'
+                      }`}>
+                      {profile.fullName.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className={`font-medium ${patient.patientId === profile.patientId ? 'text-blue-900' : 'text-slate-700'}`}>
+                        {profile.fullName}
+                      </h4>
+                      <p className="text-xs text-slate-500">{profile.patientId === patient.patientId ? 'Active Profile' : 'Click to switch'}</p>
+                    </div>
+                  </div>
+                  {patient.patientId === profile.patientId && (
+                    <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                      <Check className="w-3.5 h-3.5" />
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-400 p-2">No profiles found.</p>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={onAddProfile}
+            className="w-full border-dashed border-slate-300 text-slate-600 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50"
+          >
+            <Plus className="w-4 h-4 mr-2" /> Add New Profile
+          </Button>
+        </GlassCard>
+      </section>
 
       {/* Account Settings */}
       <section>
         <h3 className="text-sm font-medium text-slate-500 uppercase tracking-widest mb-4 ml-2">Account</h3>
         <GlassCard className="space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
-              <span className="ml-2 text-sm text-slate-500">Loading account data...</span>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500 to-indigo-400 flex items-center justify-center text-xl text-white font-medium shadow-lg shadow-blue-500/20">
-                  {userName ? userName.charAt(0).toUpperCase() : userEmail ? userEmail.charAt(0).toUpperCase() : 'U'}
-                </div>
-                <div>
-                  <h4 className="text-lg font-medium text-slate-800">{userName || 'User'}</h4>
-                  <p className="text-sm text-slate-500">{userEmail || 'No email'}</p>
-                </div>
-                <Button variant="ghost" className="ml-auto text-xs">Edit</Button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Full Name"
-                  value={userName}
-                  readOnly
-                  icon={<User className="w-4 h-4" />}
-                />
-                <Input
-                  label="Email"
-                  value={userEmail}
-                  readOnly
-                  icon={<Mail className="w-4 h-4" />}
-                />
-              </div>
-            </>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Full Name"
+              value={patient.fullName}
+              readOnly
+              icon={<User className="w-4 h-4" />}
+            />
+            <Input
+              label="Email"
+              value={patient.email}
+              readOnly
+              icon={<Mail className="w-4 h-4" />}
+            />
+          </div>
         </GlassCard>
       </section>
 
