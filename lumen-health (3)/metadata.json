@@ -1,0 +1,7 @@
+{
+  "name": "Lumen Health",
+  "description": "A minimalist, glassy medicine shopping and scheduling web app designed for a calm, cinematic patient experience.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
