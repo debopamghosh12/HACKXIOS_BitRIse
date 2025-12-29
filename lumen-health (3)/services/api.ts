@@ -1,5 +1,7 @@
-// API Base URL - Update this to match your FastAPI backend
-const API_BASE_URL = 'http://localhost:8000';
+// API Base URL - Auto-switch between Localhost and Production
+const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:8000'
+  : 'https://sanvix-hacksprite.onrender.com';
 
 import { supabase } from './supabase';
 import { Medicine, SubscriptionPlan } from '../types';

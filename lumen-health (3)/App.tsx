@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Pill, Home, Search, Package, Settings, LogOut, User, Plus, Check, Users } from 'lucide-react';
 import { AppState, INITIAL_STATE, Step, WizardStep, ActiveTab, Medicine, RoutineItem } from './types';
 import { Wizard } from './pages/Wizard';
@@ -348,7 +349,7 @@ const App: React.FC = () => {
                             autoplay
                         ></dotlottie-player>
                     </div>
-                    <h2 className="text-2xl font-light text-slate-800 mb-2">Loading Lumen Health...</h2>
+                    <h2 className="text-2xl font-light text-slate-800 mb-2">Loading Sanvix Health...</h2>
                     <p className="text-sm text-slate-500">Checking your session</p>
                     <div className="mt-4 flex justify-center gap-1">
                         <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -370,10 +371,8 @@ const App: React.FC = () => {
             {state.step === 'app' ? (
                 <nav className="fixed top-0 w-full z-50 px-4 md:px-8 py-4 flex justify-between items-center backdrop-blur-md bg-white/40 border-b border-white/30 transition-all duration-300">
                     <div className="flex items-center gap-2 cursor-pointer" onClick={() => handleTabChange('home')}>
-                        <div className="w-8 h-8 rounded-lg bg-primary-500 text-white flex items-center justify-center shadow-lg shadow-primary-500/30">
-                            <Pill className="w-5 h-5 -rotate-45" />
-                        </div>
-                        <span className="font-semibold text-lg tracking-tight text-slate-800 hidden md:block">Lumen</span>
+                        <img src="/logo.png" alt="Sanvix Logo" className="w-8 h-8 object-contain" />
+                        <span className="font-semibold text-lg tracking-tight text-slate-800 hidden md:block">Sanvix</span>
                     </div>
 
                     {/* Desktop Center Nav */}
@@ -473,10 +472,8 @@ const App: React.FC = () => {
                 /* Landing/Auth Navbar */
                 <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-sm bg-white/10 border-b border-white/20">
                     <div className="flex items-center gap-2 cursor-pointer group" onClick={() => updateState({ step: 'landing' })}>
-                        <div className="w-8 h-8 rounded-lg bg-primary-500 text-white flex items-center justify-center shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform">
-                            <Pill className="w-5 h-5 -rotate-45" />
-                        </div>
-                        <span className="font-semibold text-lg tracking-tight text-slate-800">Lumen</span>
+                        <img src="/logo.png" alt="Sanvix Logo" className="w-8 h-8 group-hover:scale-105 transition-transform object-contain" />
+                        <span className="font-semibold text-lg tracking-tight text-slate-800">Sanvix</span>
                     </div>
                     {state.step === 'landing' && (
                         <button
@@ -492,84 +489,114 @@ const App: React.FC = () => {
             {/* Main Content Area */}
             <main className="pt-24 md:pt-28 px-4 min-h-screen flex flex-col max-w-7xl mx-auto">
 
-                {state.step === 'landing' && <LandingPage onStart={() => updateState({ step: 'auth' })} />}
+                <AnimatePresence mode="wait">
+                    {state.step === 'landing' && (
+                        <motion.div
+                            key="landing"
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 20 }}
+                            transition={{ duration: 0.3 }}
+                            className="w-full"
+                        >
+                            <LandingPage onStart={() => updateState({ step: 'auth' })} />
+                        </motion.div>
+                    )}
 
-                {state.step === 'auth' && <AuthPage onLogin={handleLogin} />}
+                    {state.step === 'auth' && (
+                        <motion.div
+                            key="auth"
+                            initial={{ opacity: 0, x: 20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="w-full"
+                        >
+                            <AuthPage onLogin={handleLogin} />
+                        </motion.div>
+                    )}
 
-                {state.step === 'app' && (
-                    <>
-                        {state.activeTab === 'home' && (
-                            <HomePage
-                                state={state}
-                                toggleMedicine={toggleMedicine}
-                                addRoutineItem={addRoutineItem}
-                                toggleRoutineItem={toggleRoutineItem}
-                                goToSearch={() => handleTabChange('search')}
-                                addToPlan={handleAddRecommendation}
-                            />
-                        )}
-
-                        {state.activeTab === 'search' && (
-                            <div className="w-full">
-                                <div className="text-center mb-8">
-                                    <h2 className="text-3xl font-light text-slate-800">Start a New Plan</h2>
-                                    <p className="text-slate-500 mt-2 font-light">Tell us about your needs.</p>
-                                </div>
-                                <Stepper currentStep={state.wizardStep as any} />
-                                <Wizard
-                                    state={{ ...state, step: state.wizardStep as any }} // Adapter to make Wizard work with new types implicitly
-                                    updateState={updateState}
-                                    nextStep={nextWizardStep}
-                                    prevStep={prevWizardStep}
-                                    goToDashboard={finishWizard}
-                                    refreshProfiles={async () => {
-                                        const { supabase } = await import('./services/supabase');
-                                        const { data: { user } } = await supabase.auth.getUser();
-                                        if (user) {
-                                            const { data: profiles } = await supabase
-                                                .from('patients')
-                                                .select('*')
-                                                .eq('owner_id', user.id);
-
-                                            if (profiles) {
-                                                updateState({
-                                                    profiles: profiles.map(p => ({
-                                                        ...p,
-                                                        id: p.patient_id,
-                                                        patientId: p.patient_id,
-                                                        ownerId: p.owner_id,
-                                                        fullName: p.full_name,
-                                                        dateOfBirth: p.date_of_birth,
-                                                        bloodGroup: p.blood_group,
-                                                        chronicDiseases: p.chronic_diseases,
-                                                    }))
-                                                });
-                                            }
-                                        }
-                                    }}
+                    {state.step === 'app' && (
+                        <motion.div
+                            key="app"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.4 }}
+                            className="w-full"
+                        >
+                            {state.activeTab === 'home' && (
+                                <HomePage
+                                    state={state}
+                                    toggleMedicine={toggleMedicine}
+                                    addRoutineItem={addRoutineItem}
+                                    toggleRoutineItem={toggleRoutineItem}
+                                    goToSearch={() => handleTabChange('search')}
+                                    addToPlan={handleAddRecommendation}
                                 />
-                            </div>
-                        )}
+                            )}
 
-                        {state.activeTab === 'subscription' && (
-                            // Now passing updateState to SubscriptionPage
-                            <SubscriptionPage
-                                state={state}
-                                updateState={updateState}
-                                goToSearch={() => handleTabChange('search')}
-                            />
-                        )}
+                            {state.activeTab === 'search' && (
+                                <div className="w-full">
+                                    <div className="text-center mb-8">
+                                        <h2 className="text-3xl font-light text-slate-800">Start a New Plan</h2>
+                                        <p className="text-slate-500 mt-2 font-light">Tell us about your needs.</p>
+                                    </div>
+                                    <Stepper currentStep={state.wizardStep as any} />
+                                    <Wizard
+                                        state={{ ...state, step: state.wizardStep as any }} // Adapter to make Wizard work with new types implicitly
+                                        updateState={updateState}
+                                        nextStep={nextWizardStep}
+                                        prevStep={prevWizardStep}
+                                        goToDashboard={finishWizard}
+                                        refreshProfiles={async () => {
+                                            const { supabase } = await import('./services/supabase');
+                                            const { data: { user } } = await supabase.auth.getUser();
+                                            if (user) {
+                                                const { data: profiles } = await supabase
+                                                    .from('patients')
+                                                    .select('*')
+                                                    .eq('owner_id', user.id);
 
-                        {state.activeTab === 'settings' && (
-                            <SettingsPage
-                                state={state}
-                                updateState={updateState}
-                                onSwitchProfile={handleSwitchProfile}
-                                onAddProfile={handleAddNewProfile}
-                            />
-                        )}
-                    </>
-                )}
+                                                if (profiles) {
+                                                    updateState({
+                                                        profiles: profiles.map(p => ({
+                                                            ...p,
+                                                            id: p.patient_id,
+                                                            patientId: p.patient_id,
+                                                            ownerId: p.owner_id,
+                                                            fullName: p.full_name,
+                                                            dateOfBirth: p.date_of_birth,
+                                                            bloodGroup: p.blood_group,
+                                                            chronicDiseases: p.chronic_diseases,
+                                                        }))
+                                                    });
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {state.activeTab === 'subscription' && (
+                                <SubscriptionPage
+                                    state={state}
+                                    updateState={updateState}
+                                    goToSearch={() => handleTabChange('search')}
+                                />
+                            )}
+
+                            {state.activeTab === 'settings' && (
+                                <SettingsPage
+                                    state={state}
+                                    updateState={updateState}
+                                    onSwitchProfile={handleSwitchProfile}
+                                    onAddProfile={handleAddNewProfile}
+                                />
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </main>
 
             {/* Mobile Bottom Nav */}

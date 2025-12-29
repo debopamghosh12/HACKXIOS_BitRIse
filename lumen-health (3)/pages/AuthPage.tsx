@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ArrowRight, User, MapPin, Phone, AlertCircle, CheckCircle } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, Phone, AlertCircle, CheckCircle, Smartphone } from 'lucide-react';
 import { Button, GlassCard, Input } from '../components/UI';
 import { signUp, signIn } from '../services/auth';
 
@@ -13,6 +13,7 @@ interface FormData {
   password: string;
   fullName: string;
   phoneNumber: string;
+  address?: string;
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
@@ -30,7 +31,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
 
   const handleInputChange = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));
-    setError(null); // Clear error when user types
+    setError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,13 +42,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
 
     try {
       if (isSignUp) {
-        // Sign up new user
+        // Sign up
         const { user, error: signUpError } = await signUp({
           email: formData.email,
           password: formData.password,
           fullName: formData.fullName,
           phoneNumber: formData.phoneNumber,
-          address: formData.address,
         });
 
         if (signUpError) {
@@ -57,14 +57,11 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
         }
 
         if (user) {
-          setSuccess('Account created successfully! Please check your email to verify your account.');
-          // Optionally auto-login after a delay
-          setTimeout(() => {
-            onLogin();
-          }, 2000);
+          setSuccess('Account created! Verification email sent.');
+          setTimeout(() => onLogin(), 2000);
         }
       } else {
-        // Sign in existing user
+        // Sign in
         const { user, error: signInError } = await signIn({
           email: formData.email,
           password: formData.password,
@@ -77,14 +74,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
         }
 
         if (user) {
-          setSuccess('Signed in successfully!');
-          setTimeout(() => {
-            onLogin();
-          }, 500);
+          setSuccess('Welcome back!');
+          setTimeout(() => onLogin(), 600);
         }
       }
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      setError('An unexpected error occurred.');
       console.error('Auth error:', err);
     } finally {
       setIsLoading(false);
@@ -92,130 +87,142 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className="w-full max-w-md mx-auto pt-8 px-4"
-    >
-      <div className="text-center mb-8">
-        <h2 className="text-3xl font-light text-slate-800">
-          {isSignUp ? 'Create your account' : 'Welcome back'}
-        </h2>
-        <p className="text-slate-500 font-light mt-2">
-          {isSignUp ? 'Start your wellness journey today.' : 'Manage your plan and schedule.'}
-        </p>
-      </div>
+    <div className="min-h-[85vh] w-full flex items-center justify-center p-4">
+      <div className="w-full max-w-5xl bg-white/50 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-white/60">
 
-      <GlassCard className="p-8">
-        {/* Toggle Switch */}
-        <div className="flex p-1 bg-slate-100 rounded-full mb-8 relative">
-          <div
-            className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-full shadow-sm transition-all duration-300 ease-out ${isSignUp ? 'left-[calc(50%+2px)]' : 'left-1'}`}
-          />
-          <button
-            onClick={() => setIsSignUp(false)}
-            className={`flex-1 relative z-10 text-sm font-medium py-2 text-center rounded-full transition-colors ${!isSignUp ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Sign In
-          </button>
-          <button
-            onClick={() => setIsSignUp(true)}
-            className={`flex-1 relative z-10 text-sm font-medium py-2 text-center rounded-full transition-colors ${isSignUp ? 'text-slate-800' : 'text-slate-500 hover:text-slate-700'}`}
-          >
-            Sign Up
-          </button>
-        </div>
+        {/* Left Side - Visuals (Hidden on Mobile) */}
+        <div className="hidden md:flex md:w-1/2 bg-blue-600 relative overflow-hidden flex-col justify-between p-12 text-white">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80')] bg-cover bg-center mix-blend-overlay opacity-30"></div>
+          <div className="absolute inset-0 bg-gradient-to-tr from-blue-900/90 to-blue-500/80"></div>
 
-        <AnimatePresence mode="wait">
-          <motion.form
-            key={isSignUp ? 'signup' : 'signin'}
-            onSubmit={handleSubmit}
-            className="space-y-4"
-            initial={{ opacity: 0, rotateY: 90, perspective: 1000 }}
-            animate={{ opacity: 1, rotateY: 0 }}
-            exit={{ opacity: 0, rotateY: -90 }}
-            transition={{ duration: 0.5, ease: "easeInOut" }}
-            style={{ transformStyle: "preserve-3d" }}
-          >
-            {/* Error Message */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
-              >
-                <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{error}</span>
-              </motion.div>
-            )}
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
+                <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain brightness-0 invert" />
+              </div>
+              <span className="text-2xl font-semibold tracking-tight">Sanvix</span>
+            </div>
 
-            {/* Success Message */}
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm"
-              >
-                <CheckCircle className="w-4 h-4 flex-shrink-0" />
-                <span>{success}</span>
-              </motion.div>
-            )}
-
-            {isSignUp && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-              >
-                <Input
-                  label="Full Name"
-                  placeholder="Palak Biswas"
-                  icon={<User className="w-4 h-4" />}
-                  value={formData.fullName}
-                  onChange={handleInputChange('fullName')}
-                  required
-                />
-              </motion.div>
-            )}
-            <motion.div
+            <motion.h1
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.15 }}
+              transition={{ delay: 0.2 }}
+              className="text-4xl font-light leading-tight mb-4"
             >
+              Healthcare <br />
+              <span className="font-semibold">Reimagined.</span>
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="text-blue-100 font-light text-lg"
+            >
+              Your personal health journey starts here. Secure, simple, and smart.
+            </motion.p>
+          </div>
+
+          <div className="relative z-10 space-y-4">
+            <div className="flex items-center gap-4 text-sm text-blue-100/80">
+              <div className="flex -space-x-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="w-8 h-8 rounded-full border-2 border-primary-500 bg-slate-200" style={{ backgroundImage: `url(https://i.pravatar.cc/100?img=${i + 10})`, backgroundSize: 'cover' }}></div>
+                ))}
+              </div>
+              <p>Join 10,000+ users today</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side - Form */}
+        <div className="w-full md:w-1/2 p-8 md:p-12 bg-white/60 relative flex flex-col justify-center">
+
+          <div className="max-w-md mx-auto w-full">
+            <div className="text-center md:text-left mb-8">
+              <h2 className="text-3xl font-light text-slate-800 mb-2">
+                {isSignUp ? 'Create Account' : 'Welcome Back'}
+              </h2>
+              <p className="text-slate-500">
+                {isSignUp ? 'Enter your details to get started.' : 'Please enter your details to sign in.'}
+              </p>
+            </div>
+
+            {/* Custom Toggle */}
+            <div className="flex p-1 bg-slate-100/80 rounded-xl mb-8 w-fit mx-auto md:mx-0">
+              <button
+                onClick={() => setIsSignUp(false)}
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${!isSignUp ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => setIsSignUp(true)}
+                className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${isSignUp ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Sign Up
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+
+              <AnimatePresence mode="popLayout">
+                {error && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-lg bg-red-50 text-red-600 text-sm flex items-center gap-2 border border-red-100">
+                    <AlertCircle className="w-4 h-4" /> {error}
+                  </motion.div>
+                )}
+                {success && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-lg bg-green-50 text-green-600 text-sm flex items-center gap-2 border border-green-100">
+                    <CheckCircle className="w-4 h-4" /> {success}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <AnimatePresence initial={false}>
+                {isSignUp && (
+                  <motion.div
+                    key="signup-fields"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3, ease: 'easeInOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-4 pb-1">
+                      <Input
+                        label="Full Name"
+                        placeholder="John Doe"
+                        icon={<User className="w-4 h-4" />}
+                        value={formData.fullName}
+                        onChange={handleInputChange('fullName')}
+                        required
+                        minLength={2}
+                      />
+                      <Input
+                        label="Phone Number"
+                        type="tel"
+                        placeholder="1234567890"
+                        icon={<Smartphone className="w-4 h-4" />}
+                        value={formData.phoneNumber}
+                        onChange={handleInputChange('phoneNumber')}
+                        pattern="[0-9]{10,15}"
+                        title="Please enter a valid phone number (10-15 digits)"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <Input
                 label="Email Address"
                 type="email"
-                placeholder="palak@gmail.com"
+                placeholder="name@example.com"
                 icon={<Mail className="w-4 h-4" />}
                 value={formData.email}
                 onChange={handleInputChange('email')}
                 required
               />
-            </motion.div>
-            {isSignUp && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.3, delay: 0.2 }}
-              >
-                <Input
-                  label="Phone Number"
-                  type="tel"
-                  placeholder="9123456780"
-                  icon={<Phone className="w-4 h-4" />}
-                  value={formData.phoneNumber}
-                  onChange={handleInputChange('phoneNumber')}
-                />
-              </motion.div>
-            )}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.25 }}
-            >
+
               <Input
                 label="Password"
                 type="password"
@@ -224,21 +231,21 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
                 value={formData.password}
                 onChange={handleInputChange('password')}
                 required
+                minLength={6}
               />
-            </motion.div>
 
-            <div className="pt-4">
-              <Button className="w-full" isLoading={isLoading} type="submit">
+              <Button className="w-full mt-6 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20 py-3 text-lg" isLoading={isLoading} type="submit">
                 {isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
-            </div>
-          </motion.form>
-        </AnimatePresence>
-      </GlassCard>
 
-      <p className="text-center text-xs text-slate-400 mt-6 max-w-xs mx-auto">
-        By continuing, you agree to our Terms of Service and Privacy Policy.
-      </p>
-    </motion.div>
+            </form>
+
+            <p className="text-center text-xs text-slate-400 mt-8">
+              By continuing, you agree to Sanvix Health's <br /> Terms of Service and Privacy Policy.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
