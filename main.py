@@ -94,11 +94,10 @@ def signup_user(data: SignupInput):
 
         user_id = auth_response.user.id
         
-        supabase.table('patients').insert({
+        supabase.table('users').insert({
             "id": user_id,
             "full_name": data.full_name,
-            "phone": data.phone,
-            "address": data.address
+            "phone_number": data.phone
         }).execute()
         
         return {"status": "success", "message": "User Registered! Please Login."}

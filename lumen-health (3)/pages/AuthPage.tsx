@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, ArrowRight, User, MapPin, Phone, AlertCircle, CheckCircle } from 'lucide-react';
 import { Button, GlassCard, Input } from '../components/UI';
 import { signUp, signIn } from '../services/auth';
@@ -127,78 +127,113 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
           </button>
         </div>
 
+        <AnimatePresence mode="wait">
+          <motion.form
+            key={isSignUp ? 'signup' : 'signin'}
+            onSubmit={handleSubmit}
+            className="space-y-4"
+            initial={{ opacity: 0, rotateY: 90, perspective: 1000 }}
+            animate={{ opacity: 1, rotateY: 0 }}
+            exit={{ opacity: 0, rotateY: -90 }}
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{error}</span>
+              </motion.div>
+            )}
 
+            {/* Success Message */}
+            {success && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm"
+              >
+                <CheckCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{success}</span>
+              </motion.div>
+            )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Error Message */}
-          {error && (
+            {isSignUp && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+              >
+                <Input
+                  label="Full Name"
+                  placeholder="Jane Doe"
+                  icon={<User className="w-4 h-4" />}
+                  value={formData.fullName}
+                  onChange={handleInputChange('fullName')}
+                  required
+                />
+              </motion.div>
+            )}
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+              transition={{ duration: 0.3, delay: 0.15 }}
             >
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{error}</span>
+              <Input
+                label="Email Address"
+                type="email"
+                placeholder="jane@example.com"
+                icon={<Mail className="w-4 h-4" />}
+                value={formData.email}
+                onChange={handleInputChange('email')}
+                required
+              />
             </motion.div>
-          )}
-
-          {/* Success Message */}
-          {success && (
+            {isSignUp && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, delay: 0.2 }}
+              >
+                <Input
+                  label="Phone Number"
+                  type="tel"
+                  placeholder="1234567890"
+                  icon={<Phone className="w-4 h-4" />}
+                  value={formData.phoneNumber}
+                  onChange={handleInputChange('phoneNumber')}
+                />
+              </motion.div>
+            )}
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm"
+              transition={{ duration: 0.3, delay: 0.25 }}
             >
-              <CheckCircle className="w-4 h-4 flex-shrink-0" />
-              <span>{success}</span>
+              <Input
+                label="Password"
+                type="password"
+                placeholder="••••••••"
+                icon={<Lock className="w-4 h-4" />}
+                value={formData.password}
+                onChange={handleInputChange('password')}
+                required
+              />
             </motion.div>
-          )}
 
-          {isSignUp && (
-            <Input
-              label="Full Name"
-              placeholder="Jane Doe"
-              icon={<User className="w-4 h-4" />}
-              value={formData.fullName}
-              onChange={handleInputChange('fullName')}
-              required
-            />
-          )}
-          <Input
-            label="Email Address"
-            type="email"
-            placeholder="jane@example.com"
-            icon={<Mail className="w-4 h-4" />}
-            value={formData.email}
-            onChange={handleInputChange('email')}
-            required
-          />
-          {isSignUp && (
-            <Input
-              label="Phone Number"
-              type="tel"
-              placeholder="1234567890"
-              icon={<Phone className="w-4 h-4" />}
-              value={formData.phoneNumber}
-              onChange={handleInputChange('phoneNumber')}
-            />
-          )}
-          <Input
-            label="Password"
-            type="password"
-            placeholder="••••••••"
-            icon={<Lock className="w-4 h-4" />}
-            value={formData.password}
-            onChange={handleInputChange('password')}
-            required
-          />
-
-          <div className="pt-4">
-            <Button className="w-full" isLoading={isLoading} type="submit">
-              {isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </form>
+            <div className="pt-4">
+              <Button className="w-full" isLoading={isLoading} type="submit">
+                {isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
+          </motion.form>
+        </AnimatePresence>
       </GlassCard>
 
       <p className="text-center text-xs text-slate-400 mt-6 max-w-xs mx-auto">

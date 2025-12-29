@@ -26,14 +26,19 @@ export interface Diagnosis {
 export interface Medicine {
   id: string;
   name: string;
-  company?: string; // New field
-  status?: 'In Stock' | 'Low Stock' | 'Out of Stock'; // New field
+  company?: string;
+  status?: 'In Stock' | 'Low Stock' | 'Out of Stock';
   form: 'Tablet' | 'Capsule' | 'Syrup' | 'Injection' | 'Cream';
   strength: string;
   dosageQuantity: string;
   frequency: 'Once daily' | 'Twice daily' | 'Thrice daily' | 'Custom';
   durationDays: number;
   mappedProduct?: ProductMapping;
+  // Database fields
+  issue_solved?: string;
+  net_qty?: string;
+  price?: number;
+  interval?: number; // Refill interval in days
 }
 
 export interface ProductMapping {

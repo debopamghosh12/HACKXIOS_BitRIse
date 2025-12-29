@@ -1,28 +1,69 @@
-import { Medicine, ProductMapping } from '../types';
+// API Base URL - Update this to match your FastAPI backend
+const API_BASE_URL = 'http://localhost:8000';
 
-// Mock database of medicines for mapping
-const MOCK_MEDICINE_DB: Record<string, ProductMapping> = {
-  'asp': { productName: 'Aspirin Protect 100mg', company: 'Bayer', pricePerUnit: 0.15, packSize: '30 tablets', inStock: true },
-  'par': { productName: 'Paracetamol 500mg', company: 'Panadol', pricePerUnit: 0.10, packSize: '20 tablets', inStock: true },
-  'lip': { productName: 'Lipitor (Atorvastatin) 20mg', company: 'Pfizer', pricePerUnit: 1.20, packSize: '30 tablets', inStock: true },
-  'met': { productName: 'Metformin HCl 500mg', company: 'Glucophage', pricePerUnit: 0.05, packSize: '60 tablets', inStock: true },
-  'ibu': { productName: 'Ibuprofen 400mg', company: 'Advil', pricePerUnit: 0.12, packSize: '24 softgels', inStock: false }, // Example out of stock
-  'amo': { productName: 'Amoxicillin 500mg', company: 'Sandoz', pricePerUnit: 0.40, packSize: '15 capsules', inStock: true },
+/**
+ * Search medicines from database by brand name
+ */
+export const searchMedicines = async (query: string) => {
+  if (query.length < 1) return null;
+
+  console.log('Searching for:', query);
+
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/search-medicine?query=${encodeURIComponent(query)}`
+    );
+
+    console.log('Response status:', response.status);
+
+    const data = await response.json();
+    console.log('Search results:', data);
+
+    if (data.status === 'success' && data.results && data.results.length > 0) {
+      return {
+        medicines: data.results,
+        count: data.count
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Medicine search error:', error);
+    return null;
+  }
 };
 
-export const searchMedicines = async (query: string): Promise<ProductMapping | null> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const key = query.toLowerCase().slice(0, 3);
-      resolve(MOCK_MEDICINE_DB[key] || null);
-    }, 400); // Simulate network latency
-  });
+/**
+ * Create subscription for a medicine
+ */
+export const createSubscription = async (subscriptionData: {
+  user_id: string;
+  medicine_id: number;
+  quantity: number;
+  dosage_per_day: number;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/create-subscription`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(subscriptionData),
+    });
+    const data = await response.json();
+
+    if (data.status === 'success') {
+      return data;
+    }
+    throw new Error(data.message || 'Subscription creation failed');
+  } catch (error) {
+    console.error('Subscription error:', error);
+    throw error;
+  }
 };
 
-export const processPayment = async (amount: number): Promise<boolean> => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve(true);
-    }, 2000); // Simulate payment processing
-  });
+/**
+ * Process payment (mock for now)
+ */
+export const processPayment = async (amount: number) => {
+  // Simulate payment processing
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  return { success: true, transactionId: `TXN_${Date.now()}` };
 };

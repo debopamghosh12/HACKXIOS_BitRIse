@@ -377,41 +377,83 @@ const DiagnosisStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
 
 // 3. Medicines Step
 const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevStep }) => {
-  const [newMed, setNewMed] = useState<Partial<Medicine>>({ durationDays: 30, frequency: 'Once daily' });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [selectedMedicine, setSelectedMedicine] = useState<any>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
-  const [suggestions, setSuggestions] = useState<any>(null);
 
-  const handleAdd = () => {
-    if (!newMed.name) return;
-    const medicine: Medicine = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: newMed.name,
-      company: newMed.company,
-      status: suggestions?.inStock ? 'In Stock' : (suggestions ? 'Out of Stock' : 'In Stock'),
-      form: (newMed.form as any) || 'Tablet',
-      strength: newMed.strength || 'N/A',
-      dosageQuantity: newMed.dosageQuantity || '1',
-      frequency: newMed.frequency || 'Once daily',
-      durationDays: newMed.durationDays || 30,
-      mappedProduct: suggestions // Attach the mapped product if found
-    };
-    updateState({ medicines: [...state.medicines, medicine] });
-    setNewMed({ durationDays: 30, frequency: 'Once daily' });
-    setSuggestions(null);
-    setIsAdding(false);
+  // Editable fields
+  const [interval, setInterval] = useState(30); // Days between refills
+  const [duration, setDuration] = useState(30); // Total days to use medicine
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.length < 1) {
+      setSearchResults([]);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const result = await searchMedicines(query);
+      if (result && result.medicines) {
+        setSearchResults(result.medicines);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  const handleNameChange = async (val: string) => {
-    setNewMed({ ...newMed, name: val });
-    if (val.length >= 3) {
-      const result = await searchMedicines(val);
-      setSuggestions(result);
-      if (result) {
-        setNewMed(prev => ({ ...prev, company: result.company, name: result.productName }));
-      }
-    } else {
-      setSuggestions(null);
-    }
+  const handleSelectMedicine = (medicine: any) => {
+    setSelectedMedicine(medicine);
+    setSearchQuery(medicine.brand_name);
+    setSearchResults([]);
+  };
+
+  const handleAddMedicine = () => {
+    if (!selectedMedicine) return;
+
+    // Calculate dosage_per_day from duration and interval
+    const dosage_per_day = Math.ceil(interval / duration);
+
+    const newMedicine: Medicine = {
+      id: selectedMedicine.id.toString(),
+      name: selectedMedicine.brand_name,
+      company: '', // Not in DB
+      status: 'In Stock',
+      form: 'Tablet',
+      strength: selectedMedicine.net_qty || 'N/A',
+      dosageQuantity: '1',
+      frequency: 'Once daily',
+      durationDays: duration,
+      mappedProduct: {
+        productName: selectedMedicine.brand_name,
+        company: '',
+        pricePerUnit: selectedMedicine.price || 0,
+        packSize: selectedMedicine.net_qty || '',
+        inStock: true,
+      },
+      // Store additional info
+      issue_solved: selectedMedicine.issue_solved,
+      net_qty: selectedMedicine.net_qty,
+      price: selectedMedicine.price,
+      interval: interval,
+    };
+
+    updateState({ medicines: [...state.medicines, newMedicine] });
+
+    // Reset form
+    setSelectedMedicine(null);
+    setSearchQuery('');
+    setInterval(30);
+    setDuration(30);
+    setIsAdding(false);
   };
 
   const removeMed = (id: string) => {
@@ -423,7 +465,7 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
       <div className="flex justify-between items-end mb-6">
         <div>
           <h2 className="text-2xl font-light text-slate-800">Your Medication</h2>
-          <p className="text-slate-500 font-light mt-1">Add your prescribed medicines below.</p>
+          <p className="text-slate-500 font-light mt-1">Search and add your prescribed medicines.</p>
         </div>
         {!isAdding && (
           <Button variant="outline" onClick={() => setIsAdding(true)} className="rounded-full px-4 py-2 h-10 border-blue-200 text-blue-600 hover:bg-blue-50">
@@ -433,6 +475,7 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
       </div>
 
       <div className="space-y-4">
+        {/* Display Added Medicines */}
         {state.medicines.map(med => (
           <GlassCard key={med.id} className="p-4 sm:p-5 flex items-center justify-between group hover:border-blue-200">
             <div className="flex items-center gap-4">
@@ -441,28 +484,20 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h4 className="font-medium text-slate-800">{med.name} <span className="text-slate-400 font-light text-sm">| {med.strength}</span></h4>
-                  {/* Status Badge */}
-                  <span className={cn(
-                    "text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide",
-                    med.status === 'Out of Stock' ? "bg-red-50 text-red-600 border-red-100" : "bg-green-50 text-green-600 border-green-100"
-                  )}>
-                    {med.status}
+                  <h4 className="font-medium text-slate-800">{med.name}</h4>
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-green-50 text-green-600 border-green-100 uppercase tracking-wide">
+                    In Stock
                   </span>
                 </div>
 
-                <p className="text-sm text-slate-500 font-medium">{med.company || 'Generic'}</p>
+                <p className="text-sm text-slate-500 mt-1">{(med as any).issue_solved || 'General medication'}</p>
 
                 <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
-                  <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">{med.form}</span>
-                  <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> {med.frequency}</span>
+                  <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">{(med as any).net_qty || med.strength}</span>
                   <span className="flex items-center"><Calendar className="w-3 h-3 mr-1" /> {med.durationDays} days</span>
+                  <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> Every {(med as any).interval || 30} days</span>
+                  <span className="font-medium text-blue-600">₹{(med as any).price || 0}</span>
                 </div>
-                {med.mappedProduct && (
-                  <div className="mt-2 text-xs text-blue-600 flex items-center">
-                    <Check className="w-3 h-3 mr-1" /> Matches: {med.mappedProduct.productName}
-                  </div>
-                )}
               </div>
             </div>
             <button onClick={() => removeMed(med.id)} className="text-slate-300 hover:text-red-400 transition-colors p-2">
@@ -471,83 +506,158 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
           </GlassCard>
         ))}
 
-        {/* Add New Form */}
+        {/* Add New Medicine Form */}
         {isAdding && (
           <GlassCard className="border-blue-200 ring-4 ring-blue-50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              {/* Name Input - Full Width */}
-              <div className="md:col-span-2 relative">
-                <Input
-                  label="Medicine Name"
-                  placeholder="Start typing..."
-                  value={newMed.name || ''}
-                  onChange={(e) => handleNameChange(e.target.value)}
-                  autoFocus
-                />
-                {suggestions && (
-                  <div className="absolute top-16 right-0 bg-white shadow-xl border border-blue-100 rounded-lg p-3 z-10 flex items-center gap-3 animate-fade-in">
-                    <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">Rx</div>
-                    <div>
-                      <p className="text-xs font-semibold text-blue-700">Suggestion found</p>
-                      <p className="text-xs text-slate-500">{suggestions.productName}</p>
-                      <div className="flex items-center gap-1 mt-1">
-                        <span className={cn(
-                          "w-1.5 h-1.5 rounded-full",
-                          suggestions.inStock ? "bg-green-500" : "bg-red-500"
-                        )} />
-                        <span className="text-[10px] text-slate-400">{suggestions.inStock ? 'Available' : 'Out of Stock'}</span>
-                      </div>
+            <div className="space-y-4">
+              {/* Medicine Search */}
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
+                  Medicine Name
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search medicine..."
+                    value={searchQuery}
+                    onChange={(e) => handleSearch(e.target.value)}
+                    className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 font-light"
+                    autoFocus
+                  />
+                  {isSearching && (
+                    <div className="absolute right-3 top-3">
+                      <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Search Results - Inline within card */}
+                {searchResults.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between px-2 py-1">
+                      <p className="text-xs font-medium text-blue-700">
+                        {searchResults.length} medicine{searchResults.length > 1 ? 's' : ''} found
+                      </p>
+                      <button
+                        onClick={() => {
+                          setSearchResults([]);
+                          setSearchQuery('');
+                        }}
+                        className="text-xs text-slate-400 hover:text-slate-600"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                      {searchResults.map((medicine) => (
+                        <button
+                          key={medicine.id}
+                          onClick={() => handleSelectMedicine(medicine)}
+                          className="w-full p-3 text-left bg-white hover:bg-blue-50 active:bg-blue-100 transition-all duration-150 border border-slate-200 hover:border-blue-300 rounded-xl group"
+                        >
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <div className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
+                                {medicine.brand_name}
+                              </div>
+                              <div className="text-sm text-slate-600 mt-1 line-clamp-1">
+                                {medicine.issue_solved}
+                              </div>
+                              <div className="flex items-center gap-3 mt-2">
+                                <span className="inline-flex items-center px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-medium">
+                                  {medicine.net_qty}
+                                </span>
+                                <span className="text-sm font-bold text-blue-600">
+                                  ₹{medicine.price}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <ArrowRight className="w-5 h-5 text-blue-500" />
+                            </div>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* New Company Input */}
-              <Input
-                label="Company Name"
-                placeholder="e.g. Pfizer"
-                value={newMed.company || ''}
-                onChange={e => setNewMed({ ...newMed, company: e.target.value })}
-                icon={<Building2 className="w-4 h-4" />}
-              />
-
-              <Input label="Strength" placeholder="e.g. 500mg" value={newMed.strength || ''} onChange={e => setNewMed({ ...newMed, strength: e.target.value })} />
-
-              <div className="relative group mb-4">
-                <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Form</label>
-                <select
-                  className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                  value={newMed.form}
-                  onChange={(e) => setNewMed({ ...newMed, form: e.target.value as any })}
-                >
-                  {['Tablet', 'Capsule', 'Syrup', 'Injection'].map(f => <option key={f} value={f}>{f}</option>)}
-                </select>
-              </div>
-              <Input label="Dosage Qty" type="text" placeholder="e.g. 1" value={newMed.dosageQuantity || ''} onChange={e => setNewMed({ ...newMed, dosageQuantity: e.target.value })} />
-              <Input label="Duration (Days)" type="number" placeholder="30" value={newMed.durationDays || ''} onChange={e => setNewMed({ ...newMed, durationDays: parseInt(e.target.value) })} />
-            </div>
-
-            {/* Status Info (Auto-generated for visual feedback) */}
-            <div className="flex items-center gap-2 mb-4 px-1">
-              <span className="text-xs text-slate-400">Status:</span>
-              {suggestions ? (
-                suggestions.inStock ? (
-                  <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">
-                    <Check className="w-3 h-3 mr-1" /> Available in stock
-                  </span>
-                ) : (
-                  <span className="flex items-center text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">
-                    <AlertTriangle className="w-3 h-3 mr-1" /> Currently out of stock
-                  </span>
-                )
-              ) : (
-                <span className="text-xs text-slate-400 italic">Enter name to check availability</span>
+              {/* Selected Medicine Details (Read-only, grayed out) */}
+              {selectedMedicine && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                      Treats
+                    </label>
+                    <div className="px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
+                      {selectedMedicine.issue_solved || 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                      Available Qty
+                    </label>
+                    <div className="px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed">
+                      {selectedMedicine.net_qty || 'N/A'}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                      Price
+                    </label>
+                    <div className="px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed font-medium">
+                      ₹{selectedMedicine.price || 0}
+                    </div>
+                  </div>
+                </div>
               )}
-            </div>
 
-            <div className="flex gap-3 justify-end">
-              <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
-              <Button onClick={handleAdd}>Save Medicine</Button>
+              {/* Editable Fields: Interval and Duration */}
+              {selectedMedicine && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
+                      Interval (Days)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="30"
+                      value={interval}
+                      onChange={(e) => setInterval(parseInt(e.target.value) || 30)}
+                      className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                    />
+                    <p className="text-xs text-slate-400 mt-1 ml-1">Refill every X days</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
+                      Duration (Days)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="30"
+                      value={duration}
+                      onChange={(e) => setDuration(parseInt(e.target.value) || 30)}
+                      className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200"
+                    />
+                    <p className="text-xs text-slate-400 mt-1 ml-1">Total treatment period</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 justify-end pt-2">
+                <Button variant="ghost" onClick={() => {
+                  setIsAdding(false);
+                  setSelectedMedicine(null);
+                  setSearchQuery('');
+                  setSearchResults([]);
+                }}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddMedicine} disabled={!selectedMedicine}>
+                  Add Medicine
+                </Button>
+              </div>
             </div>
           </GlassCard>
         )}
