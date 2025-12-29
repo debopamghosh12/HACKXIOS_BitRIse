@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/UI';
 import { AppState, Medicine, SubscriptionPlan } from '../types';
-import { searchMedicines, processPayment } from '../services/api';
+import { searchMedicines, processPayment, createSubscriptions, addRoutines } from '../services/api';
 
 interface WizardProps {
   state: AppState;
@@ -30,8 +30,73 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep }) =>
   const [customDisease, setCustomDisease] = useState('');
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>(state.patient.allergies || []);
   const [selectedDiseases, setSelectedDiseases] = useState<string[]>(state.patient.chronicDiseases || []);
+  const [isSaving, setIsSaving] = useState(false);
 
   const isValid = state.patient.fullName && state.patient.email;
+
+  const handleContinue = async () => {
+    if (!isValid) return;
+
+    setIsSaving(true);
+    try {
+      // Get current user
+      const { supabase } = await import('../services/supabase');
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        // Update patient ID in state if not already set
+        if (!state.patient.id) {
+          updateState({
+            patient: { ...state.patient, id: user.id }
+          });
+        }
+
+        // Ensure patient record exists in database (upsert)
+        // Ensure patient record exists in database (upsert)
+        const { data: patientData, error: upsertError } = await supabase
+          .from('patients')
+          .upsert({
+            id: user.id,
+            user_id: user.id, // Ensure user_id is set
+            full_name: state.patient.fullName,
+            email: state.patient.email,
+            phone: state.patient.phone,
+            date_of_birth: state.patient.dateOfBirth,
+            gender: state.patient.gender,
+            blood_group: state.patient.bloodGroup,
+            allergies: selectedAllergies,
+            chronic_diseases: selectedDiseases,
+          }, {
+            onConflict: 'id'
+          })
+          .select()
+          .single();
+
+        if (upsertError) {
+          console.error('Error upserting patient:', upsertError);
+        } else if (patientData) {
+          console.log('Patient information saved successfully', patientData);
+          console.log('Generated patient_id:', patientData.patient_id);
+          // Store the generated patient_id UUID for FK relationships
+          updateState({
+            patient: {
+              ...state.patient,
+              patientId: patientData.patient_id
+            }
+          });
+          console.log('Updated state with patientId:', patientData.patient_id);
+        }
+      }
+
+      nextStep();
+    } catch (error) {
+      console.error('Error saving patient info:', error);
+      // Continue anyway - don't block user progress
+      nextStep();
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const allergyOptions = ['None', 'Peanuts', 'Tree Nuts', 'Dairy', 'Eggs', 'Soy', 'Wheat', 'Fish', 'Shellfish', 'Penicillin', 'Dust', 'Pollen', 'Other'];
   const diseaseOptions = ['None', 'Diabetes', 'Hypertension', 'Asthma', 'Thyroid', 'Heart Disease', 'Arthritis', 'Other'];
@@ -295,7 +360,7 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep }) =>
           </div>
         </div>
         <div className="mt-8">
-          <Button onClick={nextStep} disabled={!isValid} className="w-full">
+          <Button onClick={handleContinue} disabled={!isValid} isLoading={isSaving} className="w-full">
             Continue <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>
@@ -411,19 +476,27 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
   };
 
   const handleSelectMedicine = (medicine: any) => {
+    console.log('🔍 Medicine selected:', medicine);
     setSelectedMedicine(medicine);
     setSearchQuery(medicine.brand_name);
     setSearchResults([]);
+    console.log('✅ Selected medicine state updated');
   };
 
   const handleAddMedicine = () => {
-    if (!selectedMedicine) return;
+    console.log('🔘 Add Medicine button clicked');
+    console.log('Selected medicine:', selectedMedicine);
+
+    if (!selectedMedicine) {
+      console.error('❌ No medicine selected!');
+      return;
+    }
 
     // Calculate dosage_per_day from duration and interval
     const dosage_per_day = Math.ceil(interval / duration);
 
     const newMedicine: Medicine = {
-      id: selectedMedicine.id.toString(),
+      id: selectedMedicine.med_id?.toString() || selectedMedicine.id?.toString(),
       name: selectedMedicine.brand_name,
       company: '', // Not in DB
       status: 'In Stock',
@@ -446,7 +519,9 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
       interval: interval,
     };
 
+    console.log('✅ New medicine object created:', newMedicine);
     updateState({ medicines: [...state.medicines, newMedicine] });
+    console.log('✅ State updated with new medicine');
 
     // Reset form
     setSelectedMedicine(null);
@@ -454,6 +529,7 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
     setInterval(30);
     setDuration(30);
     setIsAdding(false);
+    console.log('✅ Form reset complete');
   };
 
   const removeMed = (id: string) => {
@@ -531,56 +607,69 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
                   )}
                 </div>
 
-                {/* Search Results - Inline within card */}
-                {searchResults.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    <div className="flex items-center justify-between px-2 py-1">
-                      <p className="text-xs font-medium text-blue-700">
-                        {searchResults.length} medicine{searchResults.length > 1 ? 's' : ''} found
-                      </p>
-                      <button
-                        onClick={() => {
-                          setSearchResults([]);
-                          setSearchQuery('');
-                        }}
-                        className="text-xs text-slate-400 hover:text-slate-600"
-                      >
-                        Clear
-                      </button>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
-                      {searchResults.map((medicine) => (
-                        <button
-                          key={medicine.id}
-                          onClick={() => handleSelectMedicine(medicine)}
-                          className="w-full p-3 text-left bg-white hover:bg-blue-50 active:bg-blue-100 transition-all duration-150 border border-slate-200 hover:border-blue-300 rounded-xl group"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors">
-                                {medicine.brand_name}
+                {/* Search Results - Inline within card with smooth expansion */}
+                <AnimatePresence>
+                  {searchResults.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3, ease: 'easeInOut' }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 space-y-3">
+                        <div className="flex items-center justify-between px-2 py-1">
+                          <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+                            {searchResults.length} medicine{searchResults.length > 1 ? 's' : ''} found
+                          </p>
+                          <button
+                            onClick={() => {
+                              setSearchResults([]);
+                              setSearchQuery('');
+                            }}
+                            className="text-xs text-slate-400 hover:text-slate-600 transition-colors font-medium"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                        <div className="max-h-80 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                          {searchResults.map((medicine, index) => (
+                            <motion.button
+                              key={medicine.id}
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.05, duration: 0.2 }}
+                              onClick={() => handleSelectMedicine(medicine)}
+                              className="w-full p-4 text-left bg-white hover:bg-blue-50 active:bg-blue-100 transition-all duration-200 border-2 border-slate-200 hover:border-blue-400 hover:shadow-md rounded-xl group"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <div className="font-semibold text-slate-900 group-hover:text-blue-700 transition-colors text-base">
+                                    {medicine.brand_name}
+                                  </div>
+                                  <div className="text-sm text-slate-600 mt-1.5 line-clamp-2">
+                                    {medicine.issue_solved}
+                                  </div>
+                                  <div className="flex items-center gap-3 mt-3">
+                                    <span className="inline-flex items-center px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-medium">
+                                      {medicine.net_qty}
+                                    </span>
+                                    <span className="text-base font-bold text-blue-600">
+                                      ₹{medicine.price}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <ArrowRight className="w-5 h-5 text-blue-500" />
+                                </div>
                               </div>
-                              <div className="text-sm text-slate-600 mt-1 line-clamp-1">
-                                {medicine.issue_solved}
-                              </div>
-                              <div className="flex items-center gap-3 mt-2">
-                                <span className="inline-flex items-center px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-medium">
-                                  {medicine.net_qty}
-                                </span>
-                                <span className="text-sm font-bold text-blue-600">
-                                  ₹{medicine.price}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="ml-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <ArrowRight className="w-5 h-5 text-blue-500" />
-                            </div>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                            </motion.button>
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* Selected Medicine Details (Read-only, grayed out) */}
@@ -745,16 +834,76 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 // 5. Payment Step
 const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard, prevStep }) => {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePay = async () => {
+    console.log('=== Payment Debug Info ===');
+    console.log('Patient ID (auth):', state.patient.id);
+    console.log('Patient ID (database):', state.patient.patientId);
+    console.log('Patient Email:', state.patient.email);
+    console.log('Patient Full Name:', state.patient.fullName);
+    console.log('Selected Plan:', state.selectedPlan);
+    console.log('Medicines Count:', state.medicines.length);
+    console.log('========================');
+
+    if (!state.patient.patientId || !state.selectedPlan) {
+      const errorMsg = !state.patient.patientId
+        ? 'Missing patient ID - Please complete patient information first'
+        : 'Missing plan selection';
+      setError(errorMsg);
+      console.error('Payment validation failed:', errorMsg);
+      return;
+    }
+
     setLoading(true);
+    setError(null);
     updateState({ paymentStatus: 'processing' });
-    await processPayment(100);
-    updateState({ paymentStatus: 'success' });
-    setLoading(false);
-    setTimeout(() => {
-      goToDashboard();
-    }, 1500); // Wait for success animation
+
+    try {
+      // Step 1: Create subscriptions in Supabase
+      console.log('Creating subscriptions...');
+      const subscriptions = await createSubscriptions(
+        state.patient.patientId!,  // Use generated patient UUID
+        state.medicines,
+        state.selectedPlan
+      );
+
+      if (!subscriptions || subscriptions.length === 0) {
+        throw new Error('Failed to create subscriptions');
+      }
+
+      const subscriptionIds = subscriptions.map((sub: any) => sub.id);
+      console.log('Subscriptions created:', subscriptionIds);
+
+      // Step 2: Process payment and save to Supabase
+      console.log('Processing payment...');
+      const totalAmount = 50 * (1 - (state.selectedPlan.discountPercentage || 0) / 100);
+      const paymentResult = await processPayment(
+        state.patient.patientId!,  // Use generated patient UUID
+        subscriptionIds,
+        totalAmount,
+        state.selectedPlan
+      );
+
+      console.log('Payment processed:', paymentResult);
+
+      // Step 3: Add medicine routines/reminders
+      console.log('Adding routines...');
+      await addRoutines(state.patient.patientId, state.medicines);  // Use patientId (number)
+
+      // Success!
+      updateState({ paymentStatus: 'success' });
+      setLoading(false);
+
+      setTimeout(() => {
+        goToDashboard();
+      }, 1500); // Wait for success animation
+    } catch (err: any) {
+      console.error('Payment error:', err);
+      setError(err.message || 'Payment failed. Please try again.');
+      updateState({ paymentStatus: 'error' });
+      setLoading(false);
+    }
   };
 
   if (state.paymentStatus === 'success') {
@@ -820,6 +969,15 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
           </div>
 
           <div className="mt-8">
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-red-800">Payment Failed</p>
+                  <p className="text-xs text-red-600 mt-1">{error}</p>
+                </div>
+              </div>
+            )}
             <Button onClick={handlePay} isLoading={loading} className="w-full">
               Pay & Subscribe
             </Button>

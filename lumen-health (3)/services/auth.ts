@@ -49,6 +49,7 @@ export const signUp = async (data: SignUpData): Promise<AuthResponse> => {
           id: authData.user.id,
           full_name: data.fullName,
           phone: data.phoneNumber,
+          email: data.email,
         });
 
       if (profileError) {

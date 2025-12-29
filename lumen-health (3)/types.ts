@@ -3,16 +3,17 @@ export type WizardStep = 'patient' | 'diagnosis' | 'medicines' | 'plan' | 'payme
 export type ActiveTab = 'home' | 'search' | 'subscription' | 'settings';
 
 export interface Patient {
-  id?: string;
-  fullName: string;
-  dateOfBirth?: string; // Changed from age to dateOfBirth
-  gender?: 'Male' | 'Female' | 'Other' | 'Prefer not to say';
-  bloodGroup?: 'A+' | 'A-' | 'B+' | 'B-' | 'O+' | 'O-' | 'AB+' | 'AB-';
+  id?: string; // Auth UUID (Primary Key of patients table)
+  patientId?: string; // Generated UUID (Unique, used for FK relationships)
+  userId?: string; // Owner ID (for future multi-patient support)
   email: string;
+  fullName: string;
   phone: string;
-  address?: string;
-  allergies?: string[]; // Array of allergy strings
-  chronicDiseases?: string[]; // Array of chronic disease strings
+  dateOfBirth?: string;
+  gender?: string;
+  bloodGroup?: string;
+  allergies?: string[];
+  chronicDiseases?: string[];
   conditions?: string; // Keep for backward compatibility
 }
 
@@ -93,7 +94,6 @@ export const INITIAL_STATE: AppState = {
   activeTab: 'home',
   wizardStep: 'patient',
   patient: {
-    id: '',
     fullName: '',
     email: '',
     phone: '',

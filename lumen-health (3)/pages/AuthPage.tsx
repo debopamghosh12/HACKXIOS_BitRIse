@@ -171,7 +171,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
               >
                 <Input
                   label="Full Name"
-                  placeholder="Jane Doe"
+                  placeholder="Palak Biswas"
                   icon={<User className="w-4 h-4" />}
                   value={formData.fullName}
                   onChange={handleInputChange('fullName')}
@@ -187,7 +187,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
               <Input
                 label="Email Address"
                 type="email"
-                placeholder="jane@example.com"
+                placeholder="palak@gmail.com"
                 icon={<Mail className="w-4 h-4" />}
                 value={formData.email}
                 onChange={handleInputChange('email')}
@@ -204,7 +204,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
                 <Input
                   label="Phone Number"
                   type="tel"
-                  placeholder="1234567890"
+                  placeholder="9123456780"
                   icon={<Phone className="w-4 h-4" />}
                   value={formData.phoneNumber}
                   onChange={handleInputChange('phoneNumber')}

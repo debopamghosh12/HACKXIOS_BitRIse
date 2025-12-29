@@ -82,7 +82,7 @@ def home():
 # 📝 Feature 0: User Sign Up
 @app.post("/signup")
 def signup_user(data: SignupInput):
-    print(f"📝 Registering: {data.email}")
+    print(f"[SIGNUP] Registering: {data.email}")
     try:
         auth_response = supabase.auth.sign_up({
             "email": data.email,
@@ -107,7 +107,7 @@ def signup_user(data: SignupInput):
 # 🔐 Feature 1: User Login
 @app.post("/login")
 def login_user(data: LoginInput):
-    print(f"🔐 Logging in: {data.email}")
+    print(f"[LOGIN] Logging in: {data.email}")
     try:
         session = supabase.auth.sign_in_with_password({
             "email": data.email, 
@@ -131,7 +131,7 @@ def login_user(data: LoginInput):
 # 🔍 Feature 2: Search Medicines
 @app.get("/search-medicine")
 def search_medicine(query: str):
-    print(f"🔎 Searching: {query}")
+    print(f"[SEARCH] Searching: {query}")
     try:
         response = supabase.table('medicines').select('*').ilike('brand_name', f"%{query}%").limit(20).execute()
         return {"status": "success", "count": len(response.data), "results": response.data}
@@ -141,14 +141,14 @@ def search_medicine(query: str):
 # 🧠 Feature 3: AI Prescription Scanner
 @app.post("/scan-prescription")
 def scan_prescription(data: PrescriptionInput):
-    print(f"📄 Scanning Text: {data.ocr_text}")
-    response = supabase.table('medicines').select('brand_name, id, price').limit(1000).execute()
+    print(f"[SCAN] Scanning Text: {data.ocr_text}")
+    response = supabase.table('medicines').select('brand_name, med_id, price').limit(1000).execute()
     all_meds = {item['brand_name']: item for item in response.data}
     match_score = process.extractOne(data.ocr_text, list(all_meds.keys()))
     
     if match_score and match_score[1] > 80:
         found = all_meds[match_score[0]]
-        return {"status": "success", "medicine": found['brand_name'], "medicine_id": found['id'], "price": found['price'], "confidence": match_score[1]}
+        return {"status": "success", "medicine": found['brand_name'], "medicine_id": found['med_id'], "price": found['price'], "confidence": match_score[1]}
     else:
         return {"status": "failed", "message": "Medicine not found in database."}
 

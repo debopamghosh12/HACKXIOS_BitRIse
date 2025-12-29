@@ -10,9 +10,7 @@
       "DOM.Iterable"
     ],
     "skipLibCheck": true,
-    "types": [
-      "node"
-    ],
+    // "types": ["node"], // Removed to allow all @types packages (including React)
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "moduleDetection": "force",
