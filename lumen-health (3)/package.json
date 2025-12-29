@@ -9,13 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.3",
-    "lucide-react": "0.263.1",
-    "framer-motion": "10.16.4",
-    "recharts": "2.12.0",
-    "tailwind-merge": "1.14.0",
+    "@supabase/supabase-js": "^2.89.0",
     "clsx": "2.0.0",
-    "react-dom": "^19.2.3"
+    "framer-motion": "10.16.4",
+    "lucide-react": "0.263.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "recharts": "2.12.0",
+    "tailwind-merge": "1.14.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
