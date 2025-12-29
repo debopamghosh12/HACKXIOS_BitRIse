@@ -23,5 +23,11 @@ export interface UserProfile {
   full_name?: string;
   phone?: string;
   address?: string;
+  date_of_birth?: string;
+  gender?: 'Male' | 'Female' | 'Other' | 'Prefer not to say';
+  blood_group?: 'A+' | 'A-' | 'B+' | 'B-' | 'O+' | 'O-' | 'AB+' | 'AB-';
+  email?: string;
+  allergies?: string[];
+  chronic_diseases?: string[];
   created_at: string;
 }

@@ -3,13 +3,17 @@ export type WizardStep = 'patient' | 'diagnosis' | 'medicines' | 'plan' | 'payme
 export type ActiveTab = 'home' | 'search' | 'subscription' | 'settings';
 
 export interface Patient {
-  id: string;
+  id?: string;
   fullName: string;
-  age?: number;
-  gender?: string;
+  dateOfBirth?: string; // Changed from age to dateOfBirth
+  gender?: 'Male' | 'Female' | 'Other' | 'Prefer not to say';
+  bloodGroup?: 'A+' | 'A-' | 'B+' | 'B-' | 'O+' | 'O-' | 'AB+' | 'AB-';
   email: string;
   phone: string;
-  conditions?: string;
+  address?: string;
+  allergies?: string[]; // Array of allergy strings
+  chronicDiseases?: string[]; // Array of chronic disease strings
+  conditions?: string; // Keep for backward compatibility
 }
 
 export interface Diagnosis {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
-import { 
-  User, Mail, Phone, FileText, Upload, Plus, Trash2, Calendar, 
+import {
+  User, Mail, Phone, FileText, Upload, Plus, Trash2, Calendar,
   Clock, Pill, CreditCard, ShieldCheck, ArrowRight, Activity, Check, Building2, AlertTriangle
 } from 'lucide-react';
 import { GlassCard, Button, Input } from '../components/UI';
@@ -24,71 +24,275 @@ const fadeVariants: Variants = {
 
 // 1. Patient Form
 const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep }) => {
+  const [showAllergyOther, setShowAllergyOther] = useState(false);
+  const [showDiseaseOther, setShowDiseaseOther] = useState(false);
+  const [customAllergy, setCustomAllergy] = useState('');
+  const [customDisease, setCustomDisease] = useState('');
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>(state.patient.allergies || []);
+  const [selectedDiseases, setSelectedDiseases] = useState<string[]>(state.patient.chronicDiseases || []);
+
   const isValid = state.patient.fullName && state.patient.email;
 
+  const allergyOptions = ['None', 'Peanuts', 'Tree Nuts', 'Dairy', 'Eggs', 'Soy', 'Wheat', 'Fish', 'Shellfish', 'Penicillin', 'Dust', 'Pollen', 'Other'];
+  const diseaseOptions = ['None', 'Diabetes', 'Hypertension', 'Asthma', 'Thyroid', 'Heart Disease', 'Arthritis', 'Other'];
+
+  const handleAllergyChange = (value: string) => {
+    if (value === 'None') {
+      setSelectedAllergies([]);
+      setShowAllergyOther(false);
+      setCustomAllergy('');
+      updateState({ patient: { ...state.patient, allergies: [] } });
+    } else if (value === 'Other') {
+      setShowAllergyOther(true);
+    } else {
+      const newAllergies = selectedAllergies.includes(value)
+        ? selectedAllergies.filter(a => a !== value)
+        : [...selectedAllergies.filter(a => a !== 'None'), value];
+      setSelectedAllergies(newAllergies);
+      updateState({ patient: { ...state.patient, allergies: newAllergies } });
+    }
+  };
+
+  const handleDiseaseChange = (value: string) => {
+    if (value === 'None') {
+      setSelectedDiseases([]);
+      setShowDiseaseOther(false);
+      setCustomDisease('');
+      updateState({ patient: { ...state.patient, chronicDiseases: [] } });
+    } else if (value === 'Other') {
+      setShowDiseaseOther(true);
+    } else {
+      const newDiseases = selectedDiseases.includes(value)
+        ? selectedDiseases.filter(d => d !== value)
+        : [...selectedDiseases.filter(d => d !== 'None'), value];
+      setSelectedDiseases(newDiseases);
+      updateState({ patient: { ...state.patient, chronicDiseases: newDiseases } });
+    }
+  };
+
+  const handleCustomAllergyAdd = () => {
+    if (customAllergy.trim()) {
+      const newAllergies = [...selectedAllergies, customAllergy.trim()];
+      setSelectedAllergies(newAllergies);
+      updateState({ patient: { ...state.patient, allergies: newAllergies } });
+      setCustomAllergy('');
+      setShowAllergyOther(false);
+    }
+  };
+
+  const handleCustomDiseaseAdd = () => {
+    if (customDisease.trim()) {
+      const newDiseases = [...selectedDiseases, customDisease.trim()];
+      setSelectedDiseases(newDiseases);
+      updateState({ patient: { ...state.patient, chronicDiseases: newDiseases } });
+      setCustomDisease('');
+      setShowDiseaseOther(false);
+    }
+  };
+
   return (
-    <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-md mx-auto">
+    <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-2xl mx-auto">
       <GlassCard>
         <div className="text-center mb-6">
           <h2 className="text-2xl font-light text-slate-800">Who is this for?</h2>
           <p className="text-slate-500 font-light mt-2">Let's get your profile set up.</p>
         </div>
         <div className="space-y-4">
-          <Input 
-            label="Full Name" 
-            placeholder="e.g. Jane Doe" 
+          <Input
+            label="Full Name"
+            placeholder="e.g. Jane Doe"
             value={state.patient.fullName}
             onChange={(e) => updateState({ patient: { ...state.patient, fullName: e.target.value } })}
             icon={<User className="w-4 h-4" />}
           />
+
+          {/* Date of Birth */}
+          <Input
+            label="Date of Birth"
+            type="date"
+            value={state.patient.dateOfBirth || ''}
+            onChange={(e) => updateState({ patient: { ...state.patient, dateOfBirth: e.target.value } })}
+            icon={<Calendar className="w-4 h-4" />}
+          />
+
           <div className="grid grid-cols-2 gap-4">
-            <Input 
-              label="Age" 
-              type="number" 
-              placeholder="e.g. 32" 
-              value={state.patient.age || ''}
-              onChange={(e) => updateState({ patient: { ...state.patient, age: parseInt(e.target.value) || undefined } })}
-            />
-            
             {/* Gender Dropdown */}
-            <div className="relative group mb-4">
-                <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
-                    Gender
-                </label>
-                <div className="relative">
-                    <select
-                        className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 font-light appearance-none"
-                        value={state.patient.gender || ''}
-                        onChange={(e) => updateState({ patient: { ...state.patient, gender: e.target.value } })}
-                    >
-                        <option value="" disabled>Select</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                        <option value="Non-binary">Non-binary</option>
-                        <option value="Prefer not to say">Prefer not to say</option>
-                    </select>
-                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                    </div>
+            <div className="relative group">
+              <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
+                Gender
+              </label>
+              <div className="relative">
+                <select
+                  className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 font-light appearance-none"
+                  value={state.patient.gender || ''}
+                  onChange={(e) => updateState({ patient: { ...state.patient, gender: e.target.value as any } })}
+                >
+                  <option value="" disabled>Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                 </div>
+              </div>
+            </div>
+
+            {/* Blood Group Dropdown */}
+            <div className="relative group">
+              <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
+                Blood Group
+              </label>
+              <div className="relative">
+                <select
+                  className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 font-light appearance-none"
+                  value={state.patient.bloodGroup || ''}
+                  onChange={(e) => updateState({ patient: { ...state.patient, bloodGroup: e.target.value as any } })}
+                >
+                  <option value="" disabled>Select</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                </select>
+                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                </div>
+              </div>
             </div>
           </div>
-          <Input 
-            label="Email" 
-            type="email" 
-            placeholder="jane@example.com" 
+
+          <Input
+            label="Email"
+            type="email"
+            placeholder="jane@example.com"
             value={state.patient.email}
             onChange={(e) => updateState({ patient: { ...state.patient, email: e.target.value } })}
             icon={<Mail className="w-4 h-4" />}
           />
-          <Input 
-            label="Phone" 
-            type="tel" 
-            placeholder="(555) 123-4567" 
+          <Input
+            label="Phone"
+            type="tel"
+            placeholder="(555) 123-4567"
             value={state.patient.phone}
             onChange={(e) => updateState({ patient: { ...state.patient, phone: e.target.value } })}
             icon={<Phone className="w-4 h-4" />}
           />
+
+          {/* Allergies Multi-Select */}
+          <div className="relative group">
+            <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
+              Allergies
+            </label>
+            <div className="relative">
+              <select
+                className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 font-light appearance-none"
+                onChange={(e) => handleAllergyChange(e.target.value)}
+                value=""
+              >
+                <option value="" disabled>Select allergies</option>
+                {allergyOptions.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+            {/* Selected Allergies */}
+            {selectedAllergies.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedAllergies.map((allergy, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm">
+                    {allergy}
+                    <button
+                      onClick={() => {
+                        const newAllergies = selectedAllergies.filter((_, i) => i !== idx);
+                        setSelectedAllergies(newAllergies);
+                        updateState({ patient: { ...state.patient, allergies: newAllergies } });
+                      }}
+                      className="hover:text-blue-900"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Custom Allergy Input */}
+            {showAllergyOther && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter custom allergy"
+                  value={customAllergy}
+                  onChange={(e) => setCustomAllergy(e.target.value)}
+                  className="flex-1 px-4 py-2 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+                <Button onClick={handleCustomAllergyAdd} className="px-4">Add</Button>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Chronic Diseases Multi-Select */}
+          <div className="relative group">
+            <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
+              Chronic Diseases
+            </label>
+            <div className="relative">
+              <select
+                className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all duration-200 font-light appearance-none"
+                onChange={(e) => handleDiseaseChange(e.target.value)}
+                value=""
+              >
+                <option value="" disabled>Select diseases</option>
+                {diseaseOptions.map(option => (
+                  <option key={option} value={option}>{option}</option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+            {/* Selected Diseases */}
+            {selectedDiseases.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {selectedDiseases.map((disease, idx) => (
+                  <span key={idx} className="inline-flex items-center gap-1 px-3 py-1 bg-red-50 text-red-700 rounded-full text-sm">
+                    {disease}
+                    <button
+                      onClick={() => {
+                        const newDiseases = selectedDiseases.filter((_, i) => i !== idx);
+                        setSelectedDiseases(newDiseases);
+                        updateState({ patient: { ...state.patient, chronicDiseases: newDiseases } });
+                      }}
+                      className="hover:text-red-900"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {/* Custom Disease Input */}
+            {showDiseaseOther && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-2 flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter custom disease"
+                  value={customDisease}
+                  onChange={(e) => setCustomDisease(e.target.value)}
+                  className="flex-1 px-4 py-2 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+                <Button onClick={handleCustomDiseaseAdd} className="px-4">Add</Button>
+              </motion.div>
+            )}
+          </div>
         </div>
         <div className="mt-8">
           <Button onClick={nextStep} disabled={!isValid} className="w-full">
@@ -124,16 +328,16 @@ const DiagnosisStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
             <h2 className="text-2xl font-light text-slate-800">Clinical Context</h2>
             <p className="text-slate-500 font-light mt-2">Help us understand your needs.</p>
           </div>
-          
+
           <div className="space-y-4">
-             <Input 
-              label="Primary Diagnosis / Reason" 
-              placeholder="e.g. Hypertension, Diabetes Type 2" 
+            <Input
+              label="Primary Diagnosis / Reason"
+              placeholder="e.g. Hypertension, Diabetes Type 2"
               value={state.diagnosis.primaryDiagnosis}
               onChange={(e) => updateState({ diagnosis: { ...state.diagnosis, primaryDiagnosis: e.target.value } })}
               icon={<Activity className="w-4 h-4" />}
             />
-            
+
             <div className="relative group mb-4">
               <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
                 Doctor's Notes (Optional)
@@ -152,7 +356,7 @@ const DiagnosisStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
               <p className="text-xs text-slate-400 mt-1">Drag & drop or click to browse</p>
               <input type="file" className="hidden" />
             </div>
-            
+
             <p className="flex items-center text-xs text-slate-400 mt-2">
               <ShieldCheck className="w-3 h-3 mr-1" />
               Your health data is encrypted and secure.
@@ -160,8 +364,8 @@ const DiagnosisStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
           </div>
 
           <div className="mt-8 flex gap-3">
-             <Button variant="ghost" onClick={prevStep}>Back</Button>
-             <Button onClick={nextStep} disabled={!state.diagnosis.primaryDiagnosis} className="flex-1">
+            <Button variant="ghost" onClick={prevStep}>Back</Button>
+            <Button onClick={nextStep} disabled={!state.diagnosis.primaryDiagnosis} className="flex-1">
               Next Step
             </Button>
           </div>
@@ -202,8 +406,8 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
     if (val.length >= 3) {
       const result = await searchMedicines(val);
       setSuggestions(result);
-      if(result) {
-        setNewMed(prev => ({...prev, company: result.company, name: result.productName }));
+      if (result) {
+        setNewMed(prev => ({ ...prev, company: result.company, name: result.productName }));
       }
     } else {
       setSuggestions(null);
@@ -218,8 +422,8 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
     <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-3xl mx-auto">
       <div className="flex justify-between items-end mb-6">
         <div>
-           <h2 className="text-2xl font-light text-slate-800">Your Medication</h2>
-           <p className="text-slate-500 font-light mt-1">Add your prescribed medicines below.</p>
+          <h2 className="text-2xl font-light text-slate-800">Your Medication</h2>
+          <p className="text-slate-500 font-light mt-1">Add your prescribed medicines below.</p>
         </div>
         {!isAdding && (
           <Button variant="outline" onClick={() => setIsAdding(true)} className="rounded-full px-4 py-2 h-10 border-blue-200 text-blue-600 hover:bg-blue-50">
@@ -237,22 +441,22 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                   <h4 className="font-medium text-slate-800">{med.name} <span className="text-slate-400 font-light text-sm">| {med.strength}</span></h4>
-                   {/* Status Badge */}
-                   <span className={cn(
-                     "text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide",
-                     med.status === 'Out of Stock' ? "bg-red-50 text-red-600 border-red-100" : "bg-green-50 text-green-600 border-green-100"
-                   )}>
-                     {med.status}
-                   </span>
+                  <h4 className="font-medium text-slate-800">{med.name} <span className="text-slate-400 font-light text-sm">| {med.strength}</span></h4>
+                  {/* Status Badge */}
+                  <span className={cn(
+                    "text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wide",
+                    med.status === 'Out of Stock' ? "bg-red-50 text-red-600 border-red-100" : "bg-green-50 text-green-600 border-green-100"
+                  )}>
+                    {med.status}
+                  </span>
                 </div>
-                
+
                 <p className="text-sm text-slate-500 font-medium">{med.company || 'Generic'}</p>
 
                 <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
                   <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">{med.form}</span>
-                  <span className="flex items-center"><Clock className="w-3 h-3 mr-1"/> {med.frequency}</span>
-                  <span className="flex items-center"><Calendar className="w-3 h-3 mr-1"/> {med.durationDays} days</span>
+                  <span className="flex items-center"><Clock className="w-3 h-3 mr-1" /> {med.frequency}</span>
+                  <span className="flex items-center"><Calendar className="w-3 h-3 mr-1" /> {med.durationDays} days</span>
                 </div>
                 {med.mappedProduct && (
                   <div className="mt-2 text-xs text-blue-600 flex items-center">
@@ -270,88 +474,88 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
         {/* Add New Form */}
         {isAdding && (
           <GlassCard className="border-blue-200 ring-4 ring-blue-50">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-               {/* Name Input - Full Width */}
-               <div className="md:col-span-2 relative">
-                 <Input 
-                  label="Medicine Name" 
-                  placeholder="Start typing..." 
-                  value={newMed.name || ''} 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              {/* Name Input - Full Width */}
+              <div className="md:col-span-2 relative">
+                <Input
+                  label="Medicine Name"
+                  placeholder="Start typing..."
+                  value={newMed.name || ''}
                   onChange={(e) => handleNameChange(e.target.value)}
                   autoFocus
-                 />
-                 {suggestions && (
-                   <div className="absolute top-16 right-0 bg-white shadow-xl border border-blue-100 rounded-lg p-3 z-10 flex items-center gap-3 animate-fade-in">
-                     <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">Rx</div>
-                     <div>
-                       <p className="text-xs font-semibold text-blue-700">Suggestion found</p>
-                       <p className="text-xs text-slate-500">{suggestions.productName}</p>
-                       <div className="flex items-center gap-1 mt-1">
-                          <span className={cn(
-                            "w-1.5 h-1.5 rounded-full",
-                            suggestions.inStock ? "bg-green-500" : "bg-red-500"
-                          )}/>
-                          <span className="text-[10px] text-slate-400">{suggestions.inStock ? 'Available' : 'Out of Stock'}</span>
-                       </div>
-                     </div>
-                   </div>
-                 )}
-               </div>
+                />
+                {suggestions && (
+                  <div className="absolute top-16 right-0 bg-white shadow-xl border border-blue-100 rounded-lg p-3 z-10 flex items-center gap-3 animate-fade-in">
+                    <div className="w-8 h-8 rounded bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">Rx</div>
+                    <div>
+                      <p className="text-xs font-semibold text-blue-700">Suggestion found</p>
+                      <p className="text-xs text-slate-500">{suggestions.productName}</p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <span className={cn(
+                          "w-1.5 h-1.5 rounded-full",
+                          suggestions.inStock ? "bg-green-500" : "bg-red-500"
+                        )} />
+                        <span className="text-[10px] text-slate-400">{suggestions.inStock ? 'Available' : 'Out of Stock'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-               {/* New Company Input */}
-               <Input 
-                 label="Company Name" 
-                 placeholder="e.g. Pfizer" 
-                 value={newMed.company || ''} 
-                 onChange={e => setNewMed({...newMed, company: e.target.value})} 
-                 icon={<Building2 className="w-4 h-4" />}
-               />
+              {/* New Company Input */}
+              <Input
+                label="Company Name"
+                placeholder="e.g. Pfizer"
+                value={newMed.company || ''}
+                onChange={e => setNewMed({ ...newMed, company: e.target.value })}
+                icon={<Building2 className="w-4 h-4" />}
+              />
 
-               <Input label="Strength" placeholder="e.g. 500mg" value={newMed.strength || ''} onChange={e => setNewMed({...newMed, strength: e.target.value})} />
-               
-               <div className="relative group mb-4">
-                  <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Form</label>
-                  <select 
-                    className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                    value={newMed.form}
-                    onChange={(e) => setNewMed({...newMed, form: e.target.value as any})}
-                  >
-                    {['Tablet', 'Capsule', 'Syrup', 'Injection'].map(f => <option key={f} value={f}>{f}</option>)}
-                  </select>
-               </div>
-               <Input label="Dosage Qty" type="text" placeholder="e.g. 1" value={newMed.dosageQuantity || ''} onChange={e => setNewMed({...newMed, dosageQuantity: e.target.value})} />
-               <Input label="Duration (Days)" type="number" placeholder="30" value={newMed.durationDays || ''} onChange={e => setNewMed({...newMed, durationDays: parseInt(e.target.value)})} />
-             </div>
-             
-             {/* Status Info (Auto-generated for visual feedback) */}
-             <div className="flex items-center gap-2 mb-4 px-1">
-                 <span className="text-xs text-slate-400">Status:</span>
-                 {suggestions ? (
-                   suggestions.inStock ? (
-                      <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">
-                         <Check className="w-3 h-3 mr-1" /> Available in stock
-                      </span>
-                   ) : (
-                      <span className="flex items-center text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">
-                         <AlertTriangle className="w-3 h-3 mr-1" /> Currently out of stock
-                      </span>
-                   )
-                 ) : (
-                    <span className="text-xs text-slate-400 italic">Enter name to check availability</span>
-                 )}
-             </div>
+              <Input label="Strength" placeholder="e.g. 500mg" value={newMed.strength || ''} onChange={e => setNewMed({ ...newMed, strength: e.target.value })} />
 
-             <div className="flex gap-3 justify-end">
-               <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
-               <Button onClick={handleAdd}>Save Medicine</Button>
-             </div>
+              <div className="relative group mb-4">
+                <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">Form</label>
+                <select
+                  className="block w-full px-4 py-3 bg-white/50 border border-slate-200 rounded-xl text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
+                  value={newMed.form}
+                  onChange={(e) => setNewMed({ ...newMed, form: e.target.value as any })}
+                >
+                  {['Tablet', 'Capsule', 'Syrup', 'Injection'].map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              <Input label="Dosage Qty" type="text" placeholder="e.g. 1" value={newMed.dosageQuantity || ''} onChange={e => setNewMed({ ...newMed, dosageQuantity: e.target.value })} />
+              <Input label="Duration (Days)" type="number" placeholder="30" value={newMed.durationDays || ''} onChange={e => setNewMed({ ...newMed, durationDays: parseInt(e.target.value) })} />
+            </div>
+
+            {/* Status Info (Auto-generated for visual feedback) */}
+            <div className="flex items-center gap-2 mb-4 px-1">
+              <span className="text-xs text-slate-400">Status:</span>
+              {suggestions ? (
+                suggestions.inStock ? (
+                  <span className="flex items-center text-xs font-medium text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100">
+                    <Check className="w-3 h-3 mr-1" /> Available in stock
+                  </span>
+                ) : (
+                  <span className="flex items-center text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded border border-red-100">
+                    <AlertTriangle className="w-3 h-3 mr-1" /> Currently out of stock
+                  </span>
+                )
+              ) : (
+                <span className="text-xs text-slate-400 italic">Enter name to check availability</span>
+              )}
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button variant="ghost" onClick={() => setIsAdding(false)}>Cancel</Button>
+              <Button onClick={handleAdd}>Save Medicine</Button>
+            </div>
           </GlassCard>
         )}
       </div>
 
       <div className="mt-8 flex gap-3">
-         <Button variant="ghost" onClick={prevStep}>Back</Button>
-         <Button onClick={nextStep} disabled={state.medicines.length === 0} className="flex-1">
+        <Button variant="ghost" onClick={prevStep}>Back</Button>
+        <Button onClick={nextStep} disabled={state.medicines.length === 0} className="flex-1">
           Review Plan
         </Button>
       </div>
@@ -370,21 +574,21 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
   return (
     <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-4xl mx-auto">
       <div className="text-center mb-10">
-         <h2 className="text-3xl font-light text-slate-800">Choose your plan</h2>
-         <p className="text-slate-500 font-light mt-2">Flexible options designed for adherence.</p>
+        <h2 className="text-3xl font-light text-slate-800">Choose your plan</h2>
+        <p className="text-slate-500 font-light mt-2">Flexible options designed for adherence.</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map(plan => {
           const isSelected = state.selectedPlan?.id === plan.id;
           return (
-            <div 
+            <div
               key={plan.id}
               onClick={() => updateState({ selectedPlan: plan })}
               className={cn(
                 "cursor-pointer relative overflow-hidden rounded-3xl transition-all duration-300 border-2 p-6 flex flex-col h-full",
-                isSelected 
-                  ? "bg-white border-blue-500 shadow-xl scale-105 z-10" 
+                isSelected
+                  ? "bg-white border-blue-500 shadow-xl scale-105 z-10"
                   : "bg-white/40 border-transparent hover:bg-white/60 hover:border-blue-200 hover:shadow-lg"
               )}
             >
@@ -395,10 +599,10 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
               )}
               <h3 className="text-lg font-semibold text-slate-800">{plan.name}</h3>
               <p className="text-sm font-medium text-slate-400 mt-1 uppercase tracking-wide">{plan.billingInterval}</p>
-              
+
               <div className="my-6">
                 <span className="text-3xl font-light text-slate-900">
-                  ${(50 * (1 - plan.discountPercentage/100)).toFixed(0)}
+                  ${(50 * (1 - plan.discountPercentage / 100)).toFixed(0)}
                 </span>
                 <span className="text-slate-400 text-sm"> / shipment</span>
               </div>
@@ -419,8 +623,8 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
       </div>
 
       <div className="mt-12 flex justify-center gap-4">
-         <Button variant="ghost" onClick={prevStep}>Back</Button>
-         <Button onClick={nextStep} disabled={!state.selectedPlan} className="min-w-[200px]">
+        <Button variant="ghost" onClick={prevStep}>Back</Button>
+        <Button onClick={nextStep} disabled={!state.selectedPlan} className="min-w-[200px]">
           Proceed to Checkout
         </Button>
       </div>
@@ -439,16 +643,16 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
     updateState({ paymentStatus: 'success' });
     setLoading(false);
     setTimeout(() => {
-        goToDashboard();
+      goToDashboard();
     }, 1500); // Wait for success animation
   };
 
   if (state.paymentStatus === 'success') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
-        <motion.div 
-          initial={{ scale: 0 }} 
-          animate={{ scale: 1 }} 
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 200, damping: 10 }}
           className="w-24 h-24 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-6"
         >
@@ -475,7 +679,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
           <div className="h-px bg-slate-200 my-2" />
           <div className="flex justify-between text-base font-medium">
             <span>Total due today</span>
-            <span>${(50 * (1 - (state.selectedPlan?.discountPercentage || 0)/100)).toFixed(2)}</span>
+            <span>${(50 * (1 - (state.selectedPlan?.discountPercentage || 0) / 100)).toFixed(2)}</span>
           </div>
           <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-700 mt-2">
             Plan: {state.selectedPlan?.name} ({state.selectedPlan?.billingInterval})
@@ -488,14 +692,14 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
         <h3 className="text-xl font-light text-slate-800">Secure Payment</h3>
         <GlassCard>
           <div className="flex gap-4 mb-6">
-             <div className="border border-blue-500 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center">
-               <CreditCard className="w-4 h-4 mr-2" /> Card
-             </div>
-             <div className="border border-slate-200 text-slate-500 px-4 py-2 rounded-lg text-sm font-medium flex items-center">
-               Apple Pay
-             </div>
+            <div className="border border-blue-500 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center">
+              <CreditCard className="w-4 h-4 mr-2" /> Card
+            </div>
+            <div className="border border-slate-200 text-slate-500 px-4 py-2 rounded-lg text-sm font-medium flex items-center">
+              Apple Pay
+            </div>
           </div>
-          
+
           <div className="space-y-4">
             <Input label="Card Number" placeholder="0000 0000 0000 0000" icon={<CreditCard className="w-4 h-4" />} />
             <div className="grid grid-cols-2 gap-4">
@@ -522,7 +726,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
 // Main Export
 export const Wizard: React.FC<WizardProps> = (props) => {
   const { state } = props;
-  
+
   return (
     <AnimatePresence mode="wait">
       {state.wizardStep === 'patient' && <PatientStep key="patient" {...props} />}

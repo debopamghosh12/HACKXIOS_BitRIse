@@ -49,7 +49,6 @@ export const signUp = async (data: SignUpData): Promise<AuthResponse> => {
           id: authData.user.id,
           full_name: data.fullName,
           phone: data.phoneNumber,
-          address: data.address,
         });
 
       if (profileError) {
@@ -154,5 +153,36 @@ export const resetPassword = async (email: string): Promise<{ error: AuthError |
     return { error };
   } catch (error) {
     return { error: error as AuthError };
+  }
+};
+
+/**
+ * Update patient medical information
+ */
+export const updatePatientMedicalInfo = async (
+  userId: string,
+  medicalInfo: {
+    dateOfBirth?: string;
+    gender?: string;
+    bloodGroup?: string;
+    allergies?: string[];
+    chronicDiseases?: string[];
+  }
+): Promise<{ error: any }> => {
+  try {
+    const { error } = await supabase
+      .from('patients')
+      .update({
+        date_of_birth: medicalInfo.dateOfBirth,
+        gender: medicalInfo.gender,
+        blood_group: medicalInfo.bloodGroup,
+        allergies: medicalInfo.allergies || [],
+        chronic_diseases: medicalInfo.chronicDiseases || [],
+      })
+      .eq('id', userId);
+
+    return { error };
+  } catch (error) {
+    return { error };
   }
 };

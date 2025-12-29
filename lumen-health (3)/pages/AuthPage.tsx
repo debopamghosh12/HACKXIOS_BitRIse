@@ -13,7 +13,6 @@ interface FormData {
   password: string;
   fullName: string;
   phoneNumber: string;
-  address: string;
 }
 
 export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
@@ -26,8 +25,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
     email: '',
     password: '',
     fullName: '',
-    phoneNumber: '',
-    address: '',
+    phoneNumber: ''
   });
 
   const handleInputChange = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,16 +162,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
               value={formData.fullName}
               onChange={handleInputChange('fullName')}
               required
-            />
-          )}
-          {isSignUp && (
-            <Input
-              label="Address"
-              type="text"
-              placeholder="Maple Street, 12345"
-              icon={<MapPin className="w-4 h-4" />}
-              value={formData.address}
-              onChange={handleInputChange('address')}
             />
           )}
           <Input
