@@ -792,10 +792,31 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
 
 // 4. Plan Selection
 const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevStep }) => {
+  // Calculate Total Base Price from sum of medicines
+  const totalBasePrice = state.medicines.reduce((sum, med) => sum + (med.price || 0), 0);
+
   const plans: SubscriptionPlan[] = [
-    { id: 'p1', name: 'Single Fill', billingInterval: 'One-time', discountPercentage: 0, description: 'One-time delivery for the specified duration.' },
-    { id: 'p2', name: 'Smart Refill', billingInterval: 'Monthly', discountPercentage: 15, description: 'Auto-refills every 30 days. Pause anytime.' },
-    { id: 'p3', name: 'Quarterly Saver', billingInterval: 'Quarterly', discountPercentage: 25, description: 'Best value. Refills every 90 days.' },
+    {
+      id: 'single',
+      name: 'Single Refill',
+      billingInterval: 'One-time',
+      discountPercentage: 10,
+      description: 'One-time purchase. Good for trying out.'
+    },
+    {
+      id: 'smart',
+      name: 'Smart Refill',
+      billingInterval: 'Monthly',
+      discountPercentage: 3,
+      description: 'Auto-refills every month. Best value & convenience.'
+    },
+    {
+      id: 'quarterly',
+      name: 'Quarterly Saver',
+      billingInterval: 'Quarterly',
+      discountPercentage: 5,
+      description: 'Bulk savings. Refills every 3 months.'
+    },
   ];
 
   return (
@@ -803,11 +824,16 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
       <div className="text-center mb-10">
         <h2 className="text-3xl font-light text-slate-800">Choose your plan</h2>
         <p className="text-slate-500 font-light mt-2">Flexible options designed for adherence.</p>
+        <p className="text-xs font-semibold text-slate-400 mt-4 uppercase tracking-widest">
+          Total Medicine Value: <span className="text-slate-700">₹{totalBasePrice.toFixed(2)}</span>
+        </p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map(plan => {
           const isSelected = state.selectedPlan?.id === plan.id;
+          const discountedPrice = totalBasePrice * (1 - plan.discountPercentage / 100);
+
           return (
             <div
               key={plan.id}
@@ -829,9 +855,12 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 
               <div className="my-6">
                 <span className="text-3xl font-light text-slate-900">
-                  ${(50 * (1 - plan.discountPercentage / 100)).toFixed(0)}
+                  ₹{discountedPrice.toFixed(0)}
                 </span>
                 <span className="text-slate-400 text-sm"> / shipment</span>
+                {plan.discountPercentage > 0 && (
+                  <div className="text-xs text-slate-400 line-through mt-1">₹{totalBasePrice.toFixed(0)}</div>
+                )}
               </div>
 
               <p className="text-sm text-slate-500 leading-relaxed mb-6 flex-grow">
