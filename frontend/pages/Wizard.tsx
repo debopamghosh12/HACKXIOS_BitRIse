@@ -33,7 +33,13 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
   const [selectedDiseases, setSelectedDiseases] = useState<string[]>(state.patient.chronicDiseases || []);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isValid = state.patient.fullName && state.patient.email;
+  const isValid =
+    state.patient.fullName.trim() !== '' &&
+    state.patient.email.trim() !== '' &&
+    state.patient.phone?.trim() !== '' &&
+    state.patient.dateOfBirth?.trim() !== '' &&
+    state.patient.gender &&
+    state.patient.bloodGroup;
 
   const handleContinue = async () => {
     if (!isValid) return;
@@ -194,14 +200,16 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
             type="date"
             value={state.patient.dateOfBirth || ''}
             onChange={(e) => updateState({ patient: { ...state.patient, dateOfBirth: e.target.value } })}
-            icon={<Calendar className="w-4 h-4" />}
+            icon={<User className="w-4 h-4" />}
+            rightIcon={state.patient.fullName.length > 2 ? <Check className="w-4 h-4 text-green-500" /> : undefined}
+            required
           />
 
           <div className="grid grid-cols-2 gap-4">
             {/* Gender Dropdown */}
             <div className="relative group">
               <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
-                Gender
+                Gender <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
@@ -224,7 +232,7 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
             {/* Blood Group Dropdown */}
             <div className="relative group">
               <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
-                Blood Group
+                Blood Group <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
@@ -264,6 +272,7 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
             value={state.patient.phone}
             onChange={(e) => updateState({ patient: { ...state.patient, phone: e.target.value } })}
             icon={<Phone className="w-4 h-4" />}
+            required
           />
 
           {/* Allergies Multi-Select */}
@@ -383,7 +392,7 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
           </Button>
         </div>
       </GlassCard>
-    </motion.div>
+    </motion.div >
   );
 };
 
@@ -419,6 +428,7 @@ const DiagnosisStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
               value={state.diagnosis.primaryDiagnosis}
               onChange={(e) => updateState({ diagnosis: { ...state.diagnosis, primaryDiagnosis: e.target.value } })}
               icon={<Activity className="w-4 h-4" />}
+              required
             />
 
             <div className="relative group mb-4">
