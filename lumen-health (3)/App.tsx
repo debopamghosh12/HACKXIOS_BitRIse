@@ -468,26 +468,10 @@ const App: React.FC = () => {
                         </div>
                     </div>
                 </nav>
-            ) : (
-                /* Landing/Auth Navbar */
-                <nav className="fixed top-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-sm bg-white/10 border-b border-white/20">
-                    <div className="flex items-center gap-2 cursor-pointer group" onClick={() => updateState({ step: 'landing' })}>
-                        <img src="/logo.png" alt="Sanvix Logo" className="w-8 h-8 group-hover:scale-105 transition-transform object-contain" />
-                        <span className="font-semibold text-lg tracking-tight text-slate-800">Sanvix</span>
-                    </div>
-                    {state.step === 'landing' && (
-                        <button
-                            onClick={() => updateState({ step: 'auth' })}
-                            className="text-sm font-medium text-slate-600 hover:text-primary-600 transition-colors"
-                        >
-                            Sign In
-                        </button>
-                    )}
-                </nav>
-            )}
+            ) : null}
 
             {/* Main Content Area */}
-            <main className="pt-24 md:pt-28 px-4 min-h-screen flex flex-col max-w-7xl mx-auto">
+            <main className={state.step === 'app' ? "pt-24 md:pt-28 px-4 min-h-screen flex flex-col max-w-7xl mx-auto" : "w-full"}>
 
                 <AnimatePresence mode="wait">
                     {state.step === 'landing' && (
@@ -512,7 +496,7 @@ const App: React.FC = () => {
                             transition={{ duration: 0.3 }}
                             className="w-full"
                         >
-                            <AuthPage onLogin={handleLogin} />
+                            <AuthPage onLogin={handleLogin} onBack={() => updateState({ step: 'landing' })} />
                         </motion.div>
                     )}
 

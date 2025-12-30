@@ -14,6 +14,7 @@ interface WizardProps {
   nextStep: () => void;
   prevStep: () => void;
   refreshProfiles?: () => void;
+  goToDashboard: () => void;
 }
 
 const fadeVariants: Variants = {
@@ -23,7 +24,7 @@ const fadeVariants: Variants = {
 };
 
 // 1. Patient Form
-const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refreshProfiles }) => {
+const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refreshProfiles, goToDashboard }) => {
   const [showAllergyOther, setShowAllergyOther] = useState(false);
   const [showDiseaseOther, setShowDiseaseOther] = useState(false);
   const [customAllergy, setCustomAllergy] = useState('');
@@ -375,8 +376,9 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
             )}
           </div>
         </div>
-        <div className="mt-8">
-          <Button onClick={handleContinue} disabled={!isValid} isLoading={isSaving} className="w-full">
+        <div className="mt-8 flex gap-3">
+          <Button variant="ghost" onClick={goToDashboard} className="text-slate-400 hover:text-slate-600">Cancel</Button>
+          <Button onClick={handleContinue} disabled={!isValid} isLoading={isSaving} className="flex-1">
             Continue <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
         </div>

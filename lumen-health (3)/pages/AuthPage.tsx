@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ArrowRight, User, Phone, AlertCircle, CheckCircle, Smartphone } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, Phone, AlertCircle, CheckCircle, Smartphone, ArrowLeft } from 'lucide-react';
 import { Button, GlassCard, Input } from '../components/UI';
 import { signUp, signIn } from '../services/auth';
 
 interface AuthPageProps {
   onLogin: () => void;
+  onBack: () => void;
 }
 
 interface FormData {
@@ -16,7 +17,7 @@ interface FormData {
   address?: string;
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
+export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,15 +88,23 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-[85vh] w-full flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl bg-white/50 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-white/60">
+    <div className="min-h-[85vh] w-full flex items-center justify-center p-4 relative">
+      <div className="w-full max-w-5xl bg-white/50 backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border border-white/60 relative">
 
         {/* Left Side - Visuals (Hidden on Mobile) */}
         <div className="hidden md:flex md:w-1/2 bg-blue-600 relative overflow-hidden flex-col justify-between p-12 text-white">
+          {/* Back Button Desktop */}
+          <button onClick={onBack} className="absolute top-8 left-8 flex items-center gap-2 text-white/70 hover:text-white transition-colors z-20 group">
+            <div className="p-2 rounded-full bg-white/10 group-hover:bg-white/20 transition-colors">
+              <ArrowLeft className="w-5 h-5" />
+            </div>
+            <span className="text-sm font-medium">Back to Home</span>
+          </button>
+
           <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80')] bg-cover bg-center mix-blend-overlay opacity-30"></div>
           <div className="absolute inset-0 bg-gradient-to-tr from-blue-900/90 to-blue-500/80"></div>
 
-          <div className="relative z-10">
+          <div className="relative z-10 mt-12">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/30">
                 <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain brightness-0 invert" />
@@ -137,8 +146,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
         {/* Right Side - Form */}
         <div className="w-full md:w-1/2 p-8 md:p-12 bg-white/60 relative flex flex-col justify-center">
 
+          {/* Back Button Mobile */}
+          <button onClick={onBack} className="md:hidden absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-slate-600 transition-colors z-20 p-2 -ml-2">
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">Back</span>
+          </button>
+
           <div className="max-w-md mx-auto w-full">
-            <div className="text-center md:text-left mb-8">
+            <div className="text-center md:text-left mb-8 mt-6 md:mt-0">
               <h2 className="text-3xl font-light text-slate-800 mb-2">
                 {isSignUp ? 'Create Account' : 'Welcome Back'}
               </h2>
@@ -163,82 +178,86 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin }) => {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <motion.div layout className="overflow-hidden">
+              <form onSubmit={handleSubmit} className="space-y-4">
 
-              <AnimatePresence mode="popLayout">
-                {error && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-lg bg-red-50 text-red-600 text-sm flex items-center gap-2 border border-red-100">
-                    <AlertCircle className="w-4 h-4" /> {error}
-                  </motion.div>
-                )}
-                {success && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-lg bg-green-50 text-green-600 text-sm flex items-center gap-2 border border-green-100">
-                    <CheckCircle className="w-4 h-4" /> {success}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <AnimatePresence mode="popLayout">
+                  {error && (
+                    <motion.div layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-lg bg-red-50 text-red-600 text-sm flex items-center gap-2 border border-red-100">
+                      <AlertCircle className="w-4 h-4" /> {error}
+                    </motion.div>
+                  )}
+                  {success && (
+                    <motion.div layout initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="p-3 rounded-lg bg-green-50 text-green-600 text-sm flex items-center gap-2 border border-green-100">
+                      <CheckCircle className="w-4 h-4" /> {success}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-              <AnimatePresence initial={false}>
-                {isSignUp && (
-                  <motion.div
-                    key="signup-fields"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3, ease: 'easeInOut' }}
-                    className="overflow-hidden"
-                  >
-                    <div className="space-y-4 pb-1">
-                      <Input
-                        label="Full Name"
-                        placeholder="John Doe"
-                        icon={<User className="w-4 h-4" />}
-                        value={formData.fullName}
-                        onChange={handleInputChange('fullName')}
-                        required
-                        minLength={2}
-                      />
-                      <Input
-                        label="Phone Number"
-                        type="tel"
-                        placeholder="1234567890"
-                        icon={<Smartphone className="w-4 h-4" />}
-                        value={formData.phoneNumber}
-                        onChange={handleInputChange('phoneNumber')}
-                        pattern="[0-9]{10,15}"
-                        title="Please enter a valid phone number (10-15 digits)"
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                <AnimatePresence mode="popLayout">
+                  {isSignUp && (
+                    <motion.div
+                      key="signup-fields"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }} // Smooth ease
+                      className="overflow-hidden"
+                    >
+                      <div className="space-y-4 pb-1">
+                        <Input
+                          label="Full Name"
+                          placeholder="John Doe"
+                          icon={<User className="w-4 h-4" />}
+                          value={formData.fullName}
+                          onChange={handleInputChange('fullName')}
+                          required
+                          minLength={2}
+                        />
+                        <Input
+                          label="Phone Number"
+                          type="tel"
+                          placeholder="1234567890"
+                          icon={<Smartphone className="w-4 h-4" />}
+                          value={formData.phoneNumber}
+                          onChange={handleInputChange('phoneNumber')}
+                          pattern="[0-9]{10,15}"
+                          title="Please enter a valid phone number (10-15 digits)"
+                        />
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
-              <Input
-                label="Email Address"
-                type="email"
-                placeholder="name@example.com"
-                icon={<Mail className="w-4 h-4" />}
-                value={formData.email}
-                onChange={handleInputChange('email')}
-                required
-              />
+                <motion.div layout>
+                  <Input
+                    label="Email Address"
+                    type="email"
+                    placeholder="name@example.com"
+                    icon={<Mail className="w-4 h-4" />}
+                    value={formData.email}
+                    onChange={handleInputChange('email')}
+                    required
+                  />
 
-              <Input
-                label="Password"
-                type="password"
-                placeholder="••••••••"
-                icon={<Lock className="w-4 h-4" />}
-                value={formData.password}
-                onChange={handleInputChange('password')}
-                required
-                minLength={6}
-              />
+                  <Input
+                    label="Password"
+                    type="password"
+                    placeholder="••••••••"
+                    icon={<Lock className="w-4 h-4" />}
+                    value={formData.password}
+                    onChange={handleInputChange('password')}
+                    required
+                    minLength={6}
+                  />
 
-              <Button className="w-full mt-6 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20 py-3 text-lg" isLoading={isLoading} type="submit">
-                {isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+                  <Button className="w-full mt-6 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20 py-3 text-lg" isLoading={isLoading} type="submit">
+                    {isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </motion.div>
 
-            </form>
+              </form>
+            </motion.div>
 
             <p className="text-center text-xs text-slate-400 mt-8">
               By continuing, you agree to Sanvix Health's <br /> Terms of Service and Privacy Policy.
