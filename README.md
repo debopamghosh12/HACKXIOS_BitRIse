@@ -1,6 +1,6 @@
 <div align="center">
   <img src="frontend/public/logo.png" alt="Sanvix Logo" width="120" />
-  <h1>Sanvix Health</h1>
+  <h1>Sanvix</h1>
   
   <p>
     <strong>Healthcare Reimagined. Your Health, Orchestrated.</strong>
