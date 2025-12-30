@@ -18,9 +18,7 @@ const Header = ({ onStart }: { onStart: () => void }) => (
     className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-white/70 backdrop-blur-lg border-b border-slate-100"
   >
     <div className="flex items-center gap-2">
-      <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center">
-        <Shield className="w-5 h-5" />
-      </div>
+      <img src="/logo.png" alt="Sanvix Logo" className="w-8 h-8 object-contain" />
       <span className="font-semibold text-xl text-slate-800 tracking-tight">Sanvix</span>
     </div>
 
@@ -357,7 +355,7 @@ const Footer = () => (
     <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
       <div>
         <div className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-blue-600"></div> Sanvix
+          <img src="/logo.png" alt="Sanvix Logo" className="w-6 h-6 object-contain" /> Sanvix
         </div>
         <p className="text-sm text-slate-400">Healthcare Reimagined.</p>
       </div>

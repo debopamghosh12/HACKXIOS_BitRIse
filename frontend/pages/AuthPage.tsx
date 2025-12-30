@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, ArrowRight, User, Phone, AlertCircle, CheckCircle, Smartphone, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, ArrowRight, User, Phone, AlertCircle, CheckCircle, Smartphone, ArrowLeft, Eye, EyeOff, Check, X } from 'lucide-react';
 import { Button, GlassCard, Input } from '../components/UI';
 import { signUp, signIn } from '../services/auth';
 
@@ -22,6 +22,10 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [shake, setShake] = useState(false);
+  const [section, setSection] = useState<'signin' | 'signup'>('signin');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
     email: '',
@@ -30,9 +34,39 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
     phoneNumber: ''
   });
 
+  // Calculate Password Strength
+  const getPasswordStrength = (pass: string) => {
+    let score = 0;
+    if (!pass) return 0;
+    if (pass.length > 6) score += 1;
+    if (pass.length > 10) score += 1;
+    if (/[A-Z]/.test(pass)) score += 1;
+    if (/[0-9]/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+    return Math.min(score, 4);
+  };
+
+  const strength = getPasswordStrength(formData.password);
+
+  const getStrengthColor = (s: number) => {
+    if (s === 0) return 'bg-slate-200';
+    if (s < 2) return 'bg-red-400';
+    if (s < 4) return 'bg-yellow-400';
+    return 'bg-green-500';
+  };
+
+  const VALID_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const VALID_PHONE_REGEX = /^\+?[0-9]{10,15}$/;
+
   const handleInputChange = (field: keyof FormData) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({ ...prev, [field]: e.target.value }));
     setError(null);
+    setShake(false);
+  };
+
+  const triggerShake = () => {
+    setShake(true);
+    setTimeout(() => setShake(false), 500);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,6 +74,14 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
     setIsLoading(true);
     setError(null);
     setSuccess(null);
+
+    // Basic Validation
+    if (isSignUp && !agreedToTerms) {
+      setError('You must agree to the Terms & Privacy Policy.');
+      triggerShake();
+      setIsLoading(false);
+      return;
+    }
 
     try {
       if (isSignUp) {
@@ -53,6 +95,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
 
         if (signUpError) {
           setError(signUpError.message);
+          triggerShake();
           setIsLoading(false);
           return;
         }
@@ -70,6 +113,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
 
         if (signInError) {
           setError(signInError.message);
+          triggerShake();
           setIsLoading(false);
           return;
         }
@@ -81,10 +125,18 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
       }
     } catch (err) {
       setError('An unexpected error occurred.');
+      triggerShake();
       console.error('Auth error:', err);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleMode = (mode: boolean) => {
+    setIsSignUp(mode);
+    setError(null);
+    setSuccess(null);
+    setFormData({ email: '', password: '', fullName: '', phoneNumber: '' });
   };
 
   return (
@@ -165,20 +217,25 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
             {/* Custom Toggle */}
             <div className="flex p-1 bg-slate-100/80 rounded-xl mb-8 w-fit mx-auto md:mx-0">
               <button
-                onClick={() => setIsSignUp(false)}
+                onClick={() => toggleMode(false)}
                 className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${!isSignUp ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Sign In
               </button>
               <button
-                onClick={() => setIsSignUp(true)}
+                onClick={() => toggleMode(true)}
                 className={`px-6 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${isSignUp ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Sign Up
               </button>
             </div>
 
-            <motion.div layout className="overflow-hidden">
+            <motion.div
+              layout
+              className="overflow-hidden"
+              animate={shake ? { x: [-10, 10, -10, 10, 0] } : {}}
+              transition={{ duration: 0.4 }}
+            >
               <form onSubmit={handleSubmit} className="space-y-4">
 
                 <AnimatePresence mode="popLayout">
@@ -201,28 +258,32 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }} // Smooth ease
+                      transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
                       className="overflow-hidden"
                     >
                       <div className="space-y-4 pb-1">
                         <Input
                           label="Full Name"
-                          placeholder="John Doe"
+                          placeholder="Palak Biswas"
                           icon={<User className="w-4 h-4" />}
+                          rightIcon={formData.fullName.length > 2 ? <Check className="w-4 h-4 text-green-500" /> : null}
                           value={formData.fullName}
                           onChange={handleInputChange('fullName')}
                           required
                           minLength={2}
+                          autoComplete="name"
                         />
                         <Input
                           label="Phone Number"
                           type="tel"
                           placeholder="1234567890"
                           icon={<Smartphone className="w-4 h-4" />}
+                          rightIcon={VALID_PHONE_REGEX.test(formData.phoneNumber) ? <Check className="w-4 h-4 text-green-500" /> : null}
                           value={formData.phoneNumber}
                           onChange={handleInputChange('phoneNumber')}
                           pattern="[0-9]{10,15}"
                           title="Please enter a valid phone number (10-15 digits)"
+                          autoComplete="tel"
                         />
                       </div>
                     </motion.div>
@@ -235,33 +296,92 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
                     type="email"
                     placeholder="name@example.com"
                     icon={<Mail className="w-4 h-4" />}
+                    rightIcon={VALID_EMAIL_REGEX.test(formData.email) ? <Check className="w-4 h-4 text-green-500" /> : null}
                     value={formData.email}
                     onChange={handleInputChange('email')}
                     required
+                    autoComplete="email"
                   />
 
-                  <Input
-                    label="Password"
-                    type="password"
-                    placeholder="••••••••"
-                    icon={<Lock className="w-4 h-4" />}
-                    value={formData.password}
-                    onChange={handleInputChange('password')}
-                    required
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <Input
+                      label="Password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      icon={<Lock className="w-4 h-4" />}
+                      rightIcon={
+                        <button type="button" onClick={() => setShowPassword(!showPassword)} className="hover:text-blue-600 transition-colors">
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      }
+                      value={formData.password}
+                      onChange={handleInputChange('password')}
+                      required
+                      minLength={6}
+                      autoComplete={isSignUp ? "new-password" : "current-password"}
+                    />
 
-                  <Button className="w-full mt-6 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20 py-3 text-lg" isLoading={isLoading} type="submit">
+                    {/* Password Strength Meter (Only on Signup) */}
+                    <AnimatePresence>
+                      {isSignUp && formData.password.length > 0 && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="px-1 mb-4 flex flex-col gap-1"
+                        >
+                          <div className="flex gap-1 h-1 w-full mt-1">
+                            {[0, 1, 2, 3].map((i) => (
+                              <div
+                                key={i}
+                                className={`h-full flex-1 rounded-full transition-all duration-300 ${i < strength ? getStrengthColor(strength) : 'bg-slate-100'}`}
+                              />
+                            ))}
+                          </div>
+                          <div className="text-[10px] text-right text-slate-400 font-medium">
+                            {strength < 2 ? 'Weak' : strength < 3 ? 'Medium' : strength < 4 ? 'Strong' : 'Very Strong'}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Forgot Password Link (Only Sign In) */}
+                  {!isSignUp && (
+                    <div className="flex justify-end mb-4 -mt-2">
+                      <button type="button" className="text-xs text-slate-500 hover:text-blue-600 transition-colors font-medium">
+                        Forgot Password?
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Terms Checkbox (Only Sign Up) */}
+                  {isSignUp && (
+                    <div className="flex items-start gap-2 mb-6 px-1">
+                      <div className="relative flex items-start">
+                        <div className="flex items-center h-5">
+                          <input
+                            id="terms"
+                            type="checkbox"
+                            checked={agreedToTerms}
+                            onChange={(e) => setAgreedToTerms(e.target.checked)}
+                            className="w-4 h-4 border border-slate-300 rounded bg-slate-50 focus:ring-3 focus:ring-blue-300"
+                          />
+                        </div>
+                      </div>
+                      <label htmlFor="terms" className="text-xs text-slate-500 md:text-sm">
+                        I agree to the <a href="#" className="text-blue-600 hover:underline">Terms of Service</a> and <a href="#" className="text-blue-600 hover:underline">Privacy Policy</a>.
+                      </label>
+                    </div>
+                  )}
+
+                  <Button className="w-full mt-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-lg shadow-blue-500/20 py-3 text-lg" isLoading={isLoading} type="submit">
                     {isSignUp ? 'Create Account' : 'Sign In'} <ArrowRight className="w-4 h-4 ml-2" />
                   </Button>
                 </motion.div>
 
               </form>
             </motion.div>
-
-            <p className="text-center text-xs text-slate-400 mt-8">
-              By continuing, you agree to Sanvix Health's <br /> Terms of Service and Privacy Policy.
-            </p>
           </div>
         </div>
       </div>
