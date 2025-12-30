@@ -118,28 +118,28 @@ const AddRoutineModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (
    );
 };
 
-// 1. Wellness Widget (Deeply decoupled logic)
+import { getLast7Days, getNextRefillDate } from '../utils/dateUtils';
+
+// 1. Wellness Widget (Dynamic Rolling Weekly Data)
 export const WellnessWidget: React.FC<{ state: AppState }> = ({ state }) => {
 
-   // Generate dynamic chart data per session
+   // Generate dynamic chart data for the LAST 7 DAYS
    const chartData = useMemo(() => {
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const todayIndex = new Date().getDay();
+      const last7Days = getLast7Days(); // Returns e.g., [{ label: 'Tue', date: 30, isToday: true }, ...]
 
-      return days.map((day, index) => {
+      return last7Days.map((dayItem) => {
          // Random daily doses (0 to 5)
          const randomDoses = Math.floor(Math.random() * 5) + 1;
          const maxDoses = 6; // Max height reference
          const heightPercentage = (randomDoses / maxDoses) * 100;
 
-         const isToday = index === todayIndex;
-
          return {
-            day,
+            day: dayItem.label,     // 'Mon'
+            date: dayItem.date,     // 30
             value: randomDoses,
             height: heightPercentage,
-            isToday,
-            color: isToday ? 'bg-blue-500' : 'bg-blue-200'
+            isToday: dayItem.isToday,
+            color: dayItem.isToday ? 'bg-blue-500' : 'bg-blue-200'
          };
       });
    }, []);
@@ -154,8 +154,8 @@ export const WellnessWidget: React.FC<{ state: AppState }> = ({ state }) => {
                   <p className="text-slate-500 text-sm mt-1">Medicine Intake Consistency</p>
                </div>
                <div className="bg-slate-100 rounded-full p-1 flex text-xs font-medium text-slate-600">
-                  <span className="px-3 py-1 bg-white rounded-full shadow-sm text-slate-800">Week</span>
-                  <span className="px-3 py-1 text-slate-400 hover:text-slate-600 cursor-pointer">Month</span>
+                  <span className="px-3 py-1 bg-white rounded-full shadow-sm text-slate-800">Days</span>
+                  <span className="px-3 py-1 text-slate-400 hover:text-slate-600 cursor-pointer">Weeks</span>
                </div>
             </div>
          </div>
@@ -167,7 +167,7 @@ export const WellnessWidget: React.FC<{ state: AppState }> = ({ state }) => {
 
                   {/* Tooltip on Hover */}
                   <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs py-1 px-2 rounded-lg whitespace-nowrap z-20 pointer-events-none">
-                     {d.value} Doses
+                     {d.value} Doses ({d.day} {d.date})
                   </div>
 
                   {/* Bar */}
@@ -176,9 +176,10 @@ export const WellnessWidget: React.FC<{ state: AppState }> = ({ state }) => {
                      style={{ height: `${d.height}%` }}
                   ></div>
 
-                  {/* Label */}
-                  <div className={`mt-3 text-xs font-semibold ${d.isToday ? 'text-blue-600' : 'text-slate-400'}`}>
-                     {d.day}
+                  {/* Label (Day + Date) */}
+                  <div className={`mt-3 flex flex-col items-center ${d.isToday ? 'text-blue-600' : 'text-slate-400'}`}>
+                     <span className="text-xs font-bold">{d.day}</span>
+                     <span className="text-[10px] font-medium opacity-80">{d.date}</span>
                   </div>
                </div>
             ))}
@@ -188,8 +189,10 @@ export const WellnessWidget: React.FC<{ state: AppState }> = ({ state }) => {
 };
 
 
-// 3. Plan Progress Widget
+// 3. Plan Progress Widget (Next Refill Logic)
 export const PlanProgressWidget: React.FC = () => {
+   const nextRefill = useMemo(() => getNextRefillDate(new Date(), 28), []); // 28 days cycle
+
    return (
       <div className="bg-blue-600 rounded-[2rem] p-6 text-white h-full relative overflow-hidden flex flex-col justify-between shadow-lg shadow-blue-500/30">
          <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
@@ -198,21 +201,21 @@ export const PlanProgressWidget: React.FC = () => {
          <div className="relative z-10">
             <h3 className="text-2xl font-semibold">Your Plan</h3>
             <div className="flex items-center gap-2 mt-1">
-               <span className="text-blue-200 text-sm font-medium uppercase tracking-wider">Weekly Goal</span>
+               <span className="text-blue-200 text-sm font-medium uppercase tracking-wider">Next Refill</span>
             </div>
          </div>
 
-         <div className="relative z-10 flex items-end gap-1 mt-4">
-            <span className="text-6xl font-light tracking-tighter">85</span>
-            <span className="text-2xl font-light text-blue-200 mb-1">%</span>
+         <div className="relative z-10 flex flex-col mt-4">
+            <span className="text-4xl font-light tracking-tighter mb-1">{nextRefill}</span>
+            <span className="text-sm font-medium text-blue-200">Standard Plan • Active</span>
          </div>
 
          {/* Dots Visualization */}
-         <div className="relative z-10 flex gap-1.5 mt-6">
+         <div className="relative z-10 flex gap-1.5 mt-auto">
             {[...Array(7)].map((_, i) => (
                <div
                   key={i}
-                  className={`h-12 w-3 rounded-full ${i < 5 ? 'bg-white' : 'bg-white/20'}`}
+                  className={`h-2 w-full rounded-full ${i < 5 ? 'bg-white' : 'bg-white/20'}`}
                />
             ))}
          </div>
