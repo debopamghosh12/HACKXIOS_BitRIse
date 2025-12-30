@@ -5,7 +5,6 @@ import {
    Heart, Activity, Calendar, Moon, Sun,
    MessageSquare, ArrowRight, Check, Zap, Shield, TrendingUp, Pill, Plus, X, Clock, Droplets, Syringe, Circle, Pipette
 } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
 import { GlassCard, Button } from './UI';
 import { AppState, RoutineItem } from '../types';
 
@@ -122,90 +121,66 @@ const AddRoutineModal: React.FC<{ isOpen: boolean; onClose: () => void; onAdd: (
 // 1. Wellness Widget (Deeply decoupled logic)
 export const WellnessWidget: React.FC<{ state: AppState }> = ({ state }) => {
 
-   // Calculate dynamic data based on ROUTINE ITEMS now
+   // Generate dynamic chart data per session
    const chartData = useMemo(() => {
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const fullDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       const todayIndex = new Date().getDay();
 
-      // Calculate Today's Score based on ROUTINE
-      const totalItems = state.routineItems.length;
-      const completedCount = state.completedRoutineIds.length;
-      const todayScore = totalItems > 0 ? Math.round((completedCount / totalItems) * 100) : 0;
-
       return days.map((day, index) => {
-         let value = 0;
-         // Past days: Random 'good' data to simulate history
-         if (index < todayIndex) {
-            value = 60 + Math.floor(Math.random() * 40);
-         }
-         // Today: Actual calculated score
-         else if (index === todayIndex) {
-            value = todayScore;
-         }
-         // Future: 0
-         else {
-            value = 0;
-         }
+         // Random daily doses (0 to 5)
+         const randomDoses = Math.floor(Math.random() * 5) + 1;
+         const maxDoses = 6; // Max height reference
+         const heightPercentage = (randomDoses / maxDoses) * 100;
+
+         const isToday = index === todayIndex;
 
          return {
-            time: day,
-            value: value,
-            full: fullDays[index],
-            isToday: index === todayIndex,
-            status: index > todayIndex ? 'Upcoming' : (value >= 100 ? 'Completed' : 'In Progress')
+            day,
+            value: randomDoses,
+            height: heightPercentage,
+            isToday,
+            color: isToday ? 'bg-blue-500' : 'bg-blue-200'
          };
       });
-   }, [state.routineItems, state.completedRoutineIds]);
+   }, []);
 
    return (
-      <GlassCard className="h-full flex flex-col justify-between overflow-hidden relative border-blue-100/50">
-         <div className="flex justify-between items-start mb-4 relative z-10">
-            <div>
-               <h3 className="text-2xl font-semibold text-slate-800 tracking-tight">Weekly Progress</h3>
-               <p className="text-slate-500 text-sm mt-1">Daily routine accomplishment</p>
-            </div>
-            <div className="bg-slate-100 rounded-full p-1 flex text-xs font-medium text-slate-600">
-               <span className="px-3 py-1 bg-white rounded-full shadow-sm text-slate-800">Week</span>
-               <span className="px-3 py-1 text-slate-400 hover:text-slate-600 cursor-pointer">Month</span>
+      <GlassCard className="h-full flex flex-col overflow-hidden relative border-blue-100/50 p-6">
+         {/* Header Section */}
+         <div className="z-10 mb-8">
+            <div className="flex justify-between items-start mb-2">
+               <div>
+                  <h3 className="text-2xl font-semibold text-slate-800 tracking-tight">Weekly Progress</h3>
+                  <p className="text-slate-500 text-sm mt-1">Medicine Intake Consistency</p>
+               </div>
+               <div className="bg-slate-100 rounded-full p-1 flex text-xs font-medium text-slate-600">
+                  <span className="px-3 py-1 bg-white rounded-full shadow-sm text-slate-800">Week</span>
+                  <span className="px-3 py-1 text-slate-400 hover:text-slate-600 cursor-pointer">Month</span>
+               </div>
             </div>
          </div>
 
-         <div className="absolute inset-x-0 bottom-0 top-[20%] pt-6">
-            <ResponsiveContainer width="100%" height="100%">
-               <AreaChart data={chartData} margin={{ top: 20, right: 0, left: 0, bottom: 0 }}>
-                  <defs>
-                     <linearGradient id="colorWellness" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                     </linearGradient>
-                  </defs>
-                  <Tooltip
-                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(8px)' }}
-                     itemStyle={{ color: '#1e40af', fontWeight: 600 }}
-                     labelStyle={{ color: '#64748b', fontSize: '12px', marginBottom: '4px' }}
-                     cursor={{ stroke: '#3b82f6', strokeWidth: 2, strokeDasharray: '5 5' }}
-                     labelFormatter={(label, payload) => payload[0]?.payload.full || label}
-                     formatter={(value: number, name: string, props: any) => [`${value}% Accomplished`, props.payload.status]}
-                  />
-                  <Area
-                     type="monotone"
-                     dataKey="value"
-                     stroke="#3b82f6"
-                     strokeWidth={4}
-                     fill="url(#colorWellness)"
-                     animationDuration={1500}
-                     animationEasing="ease-out"
-                  />
-               </AreaChart>
-            </ResponsiveContainer>
-         </div>
-
-         <div className="relative z-10 mt-auto flex justify-between items-end text-xs font-semibold text-slate-400 pb-6 px-4">
+         {/* Custom CSS Bar Chart Container */}
+         <div className="flex-1 flex items-end justify-between gap-4 w-full h-full min-h-[200px] px-2">
             {chartData.map((d, i) => (
-               <span key={i} className={`rounded-md px-1.5 py-0.5 ${d.isToday ? 'bg-blue-100 text-blue-600' : 'bg-slate-50'}`}>
-                  {d.time}
-               </span>
+               <div key={i} className="flex flex-col items-center justify-end h-full flex-1 group relative">
+
+                  {/* Tooltip on Hover */}
+                  <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-xs py-1 px-2 rounded-lg whitespace-nowrap z-20 pointer-events-none">
+                     {d.value} Doses
+                  </div>
+
+                  {/* Bar */}
+                  <div
+                     className={`w-full max-w-[40px] rounded-t-xl transition-all duration-1000 ease-out hover:bg-blue-600 ${d.color}`}
+                     style={{ height: `${d.height}%` }}
+                  ></div>
+
+                  {/* Label */}
+                  <div className={`mt-3 text-xs font-semibold ${d.isToday ? 'text-blue-600' : 'text-slate-400'}`}>
+                     {d.day}
+                  </div>
+               </div>
             ))}
          </div>
       </GlassCard>
@@ -253,7 +228,6 @@ export const DailyRoutineWidget: React.FC<{
    toggleRoutineItem?: (id: string) => void;
 }> = ({ state, toggleRoutineItem, addRoutineItem }) => {
    const [isModalOpen, setIsModalOpen] = useState(false);
-   const hasItems = state.routineItems.length > 0;
 
    // Helper to get icon
    const getIcon = (type: RoutineItem['type']) => {
@@ -267,6 +241,25 @@ export const DailyRoutineWidget: React.FC<{
          default: return Pill;
       }
    };
+
+   // Merge Routine Items with Subscription Medicines
+   const allMedications = useMemo(() => {
+      // Convert subscription medicines to routine items format for display
+      const subscriptionMeds: RoutineItem[] = state.medicines.map(med => ({
+         id: med.id,
+         title: med.name,
+         time: '08:00', // Default morning time for plan meds
+         type: (med.form as RoutineItem['type']) || 'Tablet'
+      }));
+
+      // Combine manually added items and subscription items
+      // Filter out duplicates if any (simple check by ID)
+      const manualItems = state.routineItems.filter(r => !subscriptionMeds.find(s => s.id === r.id));
+
+      return [...subscriptionMeds, ...manualItems];
+   }, [state.medicines, state.routineItems]);
+
+   const hasItems = allMedications.length > 0;
 
    return (
       <>
@@ -288,7 +281,7 @@ export const DailyRoutineWidget: React.FC<{
                      <button onClick={() => setIsModalOpen(true)} className="text-blue-600 text-xs font-bold mt-1 hover:underline">Add manually</button>
                   </div>
                ) : (
-                  state.routineItems.map((item) => {
+                  allMedications.map((item) => {
                      const isCompleted = state.completedRoutineIds.includes(item.id);
                      const Icon = getIcon(item.type);
 

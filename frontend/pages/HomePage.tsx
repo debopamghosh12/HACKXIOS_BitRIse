@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowRight, Plus, Zap, Moon, Heart, Shield, Sparkles } from 'lucide-react';
+import { ArrowRight, Plus, Zap, Moon, Heart, Shield, Sparkles, Droplet, Sun, Crown, Package, Activity } from 'lucide-react';
 import { GlassCard, Button } from '../components/UI';
 import { AppState, RoutineItem } from '../types';
 import { WellnessWidget, PlanProgressWidget, DailyRoutineWidget } from '../components/HomeWidgets';
@@ -16,20 +16,20 @@ interface HomePageProps {
 
 export const HomePage: React.FC<HomePageProps> = ({ state, toggleMedicine, addRoutineItem, toggleRoutineItem, goToSearch, addToPlan }) => {
 
-  // Updated categories to Blue/Cool tones
+  // Updated categories to Blue/Cool tones with NEW Icons
   const categories = [
-    { name: 'Immunity', icon: Shield, color: 'bg-blue-100 text-blue-600' },
+    { name: 'Immunity', icon: Crown, color: 'bg-blue-100 text-blue-600' },
     { name: 'Sleep', icon: Moon, color: 'bg-indigo-100 text-indigo-600' },
-    { name: 'Energy', icon: Zap, color: 'bg-cyan-100 text-cyan-600' },
-    { name: 'Heart', icon: Heart, color: 'bg-sky-100 text-sky-600' },
-    { name: 'General', icon: Sparkles, color: 'bg-slate-100 text-slate-600' },
+    { name: 'Energy', icon: Sun, color: 'bg-amber-100 text-amber-600' },
+    { name: 'Heart', icon: Activity, color: 'bg-rose-100 text-rose-600' }, // Changed to Activity/Red-ish
+    { name: 'Hydration', icon: Droplet, color: 'bg-cyan-100 text-cyan-600' }, // Replaced General
   ];
 
   const recommendations = [
-    { id: 1, name: 'Daily Multi-Vitamin', desc: 'Essential nutrients for daily energy.', price: '$12.00', tag: 'Wellness' },
-    { id: 2, name: 'Omega-3 Fish Oil', desc: 'Supports heart and brain health.', price: '$18.50', tag: 'Heart' },
-    { id: 3, name: 'Melatonin Sleep Aid', desc: 'Natural support for better sleep.', price: '$9.00', tag: 'Sleep' },
-    { id: 4, name: 'Probiotic Complex', desc: 'For a healthy digestive system.', price: '$24.00', tag: 'Gut Health' },
+    { id: 1, name: 'Daily Multi-Vitamin', desc: 'Essential nutrients for daily energy.', price: '₹1800.00', tag: 'Wellness', image: '/products/multivitamin.png' },
+    { id: 2, name: 'Omega-3 Fish Oil', desc: 'Supports heart and brain health.', price: '₹1850.00', tag: 'Heart', image: '/products/omega3.png' },
+    { id: 3, name: 'Melatonin Sleep Aid', desc: 'Natural support for better sleep.', price: '₹900.00', tag: 'Sleep', image: '/products/melatonin.png' },
+    { id: 4, name: 'Probiotic Complex', desc: 'For a healthy digestive system.', price: '₹2400.00', tag: 'Gut Health', image: '/products/probiotic.png' },
   ];
 
   return (
@@ -86,7 +86,7 @@ export const HomePage: React.FC<HomePageProps> = ({ state, toggleMedicine, addRo
       {/* Recommendations Grid - Bento Style */}
       <section>
         <div className="flex items-center gap-2 mb-8 px-2">
-          <Sparkles className="w-5 h-5 text-blue-400" />
+          <Package className="w-5 h-5 text-blue-500" /> {/* Changed Icon */}
           <h2 className="text-xl font-light text-slate-800">Curated For You</h2>
         </div>
 
@@ -96,10 +96,15 @@ export const HomePage: React.FC<HomePageProps> = ({ state, toggleMedicine, addRo
               key={item.id}
               className="group relative bg-white rounded-3xl p-4 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-blue-100/50 transition-all duration-300 flex flex-col"
             >
-              <div className="relative aspect-square rounded-2xl bg-slate-50 mb-4 overflow-hidden flex items-center justify-center group-hover:bg-blue-50 transition-colors">
-                {/* Product Placeholder */}
-                <div className="w-24 h-32 bg-slate-200 rounded-lg shadow-inner flex items-center justify-center text-slate-400 group-hover:bg-blue-100/50 group-hover:text-blue-400 transition-colors">
-                  Img
+
+              <div className="relative aspect-square rounded-2xl bg-white mb-4 overflow-hidden flex items-center justify-center group-hover:bg-blue-50/30 transition-colors">
+                {/* Product Image */}
+                <div className="w-full h-full p-6 flex items-center justify-center">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="w-full h-full object-contain drop-shadow-xl group-hover:scale-110 transition-transform duration-500"
+                  />
                 </div>
                 <div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider text-slate-500">
                   {item.tag}
@@ -125,22 +130,6 @@ export const HomePage: React.FC<HomePageProps> = ({ state, toggleMedicine, addRo
           ))}
         </div>
       </section>
-
-      {/* Info Banner - Blue Theme */}
-      <div className="rounded-2xl bg-blue-900 text-white p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden shadow-2xl shadow-blue-900/20">
-        <div className="relative z-10">
-          <h3 className="text-2xl font-serif mb-2">Free Consultation Included</h3>
-          <p className="text-blue-100 font-light max-w-lg">
-            Every subscription plan comes with 24/7 access to our team of licensed pharmacists.
-          </p>
-        </div>
-        <Button className="bg-white text-blue-900 hover:bg-blue-50 border-none shrink-0 relative z-10 shadow-none">
-          Learn More
-        </Button>
-
-        {/* Decor */}
-        <div className="absolute right-0 bottom-0 w-64 h-64 bg-white/10 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
-      </div>
 
     </div>
   );
