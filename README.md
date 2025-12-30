@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="public/logo.png" alt="Sanvix Logo" width="120" />
+  <img src="frontend/public/logo.png" alt="Sanvix Logo" width="120" />
   <h1>Sanvix Health</h1>
   
   <p>
