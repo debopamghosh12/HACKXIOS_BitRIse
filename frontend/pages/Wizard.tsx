@@ -937,7 +937,9 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
 
       // Step 2: Process payment and save to Supabase
       console.log('Processing payment...');
-      const totalAmount = 50 * (1 - (state.selectedPlan.discountPercentage || 0) / 100);
+      const totalBasePrice = state.medicines.reduce((sum, med) => sum + (med.price || 0), 0);
+      const totalAmount = totalBasePrice * (1 - (state.selectedPlan.discountPercentage || 0) / 100);
+
       const paymentResult = await processPayment(
         state.patient.patientId!,  // Use generated patient UUID
         subscriptionIds,
@@ -983,6 +985,10 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
     );
   }
 
+  // Calculate totals for render
+  const totalBasePrice = state.medicines.reduce((sum, med) => sum + (med.price || 0), 0);
+  const totalDue = totalBasePrice * (1 - (state.selectedPlan?.discountPercentage || 0) / 100);
+
   return (
     <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
       {/* Summary Column */}
@@ -992,16 +998,17 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
           {state.medicines.map(m => (
             <div key={m.id} className="flex justify-between text-sm">
               <span className="text-slate-700">{m.name} <span className="text-slate-400">x {m.durationDays} days</span></span>
-              <span className="font-medium text-slate-900">$15.00</span>
+              <span className="font-medium text-slate-900">₹{m.price?.toFixed(0) || 0}</span>
             </div>
           ))}
           <div className="h-px bg-slate-200 my-2" />
           <div className="flex justify-between text-base font-medium">
             <span>Total due today</span>
-            <span>${(50 * (1 - (state.selectedPlan?.discountPercentage || 0) / 100)).toFixed(2)}</span>
+            <span>₹{totalDue.toFixed(0)}</span>
           </div>
           <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-700 mt-2">
             Plan: {state.selectedPlan?.name} ({state.selectedPlan?.billingInterval})
+            {state.selectedPlan?.discountPercentage ? ` - ${state.selectedPlan.discountPercentage}% Savings Applied` : ''}
           </div>
         </GlassCard>
       </div>
@@ -1038,9 +1045,14 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
                 </div>
               </div>
             )}
-            <Button onClick={handlePay} isLoading={loading} className="w-full">
-              Pay & Subscribe
-            </Button>
+            <div className="flex gap-3">
+              <Button variant="ghost" onClick={prevStep} disabled={loading} className="flex-1">
+                Back
+              </Button>
+              <Button onClick={handlePay} isLoading={loading} className="flex-[2]">
+                Pay & Subscribe
+              </Button>
+            </div>
             <p className="text-center text-xs text-slate-400 mt-3 flex items-center justify-center">
               <ShieldCheck className="w-3 h-3 mr-1" /> SSL Secure Transaction
             </p>
