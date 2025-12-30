@@ -116,7 +116,7 @@ For team members new to certain technologies, Kiro acted as an instant mentor:
 
 ## 🛠️ The Development Journey
 
-### Phase 1: Project Setup & Architecture (Day 1)
+### Phase 1: Project Setup & Architecture 
 
 **What We Needed**: A modern full-stack project structure with proper configuration for React 19, Vite, FastAPI, and Supabase.
 
@@ -133,7 +133,7 @@ For team members new to certain technologies, Kiro acted as an instant mentor:
 
 ---
 
-### Phase 2: Database Schema Design (Day 1-2)
+### Phase 2: Database Schema Design 
 
 **What We Needed**: A complex multi-tenant database with proper relationships, security policies, and performance optimization.
 
@@ -150,7 +150,7 @@ For team members new to certain technologies, Kiro acted as an instant mentor:
 
 ---
 
-### Phase 3: Backend API Development (Day 2-3)
+### Phase 3: Backend API Development 
 
 **What We Needed**: A robust FastAPI backend with authentication, medicine search, prescription scanning, and payment processing.
 
@@ -168,7 +168,7 @@ For team members new to certain technologies, Kiro acted as an instant mentor:
 
 ---
 
-### Phase 4: Frontend Components (Day 3-5)
+### Phase 4: Frontend Components 
 
 **What We Needed**: A modern, animated UI with React 19, complex state management, and responsive design.
 
@@ -187,7 +187,7 @@ For team members new to certain technologies, Kiro acted as an instant mentor:
 
 ---
 
-### Phase 5: Authentication & User Management (Day 4)
+### Phase 5: Authentication & User Management 
 
 **What We Needed**: Secure authentication with Supabase and multi-patient support for family accounts.
 
@@ -205,7 +205,7 @@ For team members new to certain technologies, Kiro acted as an instant mentor:
 
 ---
 
-### Phase 6: State Management & Integration (Day 5)
+### Phase 6: State Management & Integration 
 
 **What We Needed**: Complex application state across multiple tabs, wizards, and user profiles.
 
