@@ -65,9 +65,10 @@
 | **Frontend** | React 19, TypeScript | The latest in component-based UI |
 | **Styling** | Tailwind CSS, PostCSS | Utility-first, responsive design |
 | **Motion** | Framer Motion, Lottie | Complex layout transitions and vector animations |
-| **Backend** | Supabase | Postgres Database, Auth, and Edge Functions |
+| **Backend** | Supabase, FastAPI | Postgres DB, Auth, and High-performance Python API |
 | **Icons** | Lucide React | Clean, consistent SVG icons |
 | **Build** | Vite | Next-gen frontend tooling |
+| **Deployment** | Vercel, Render | Frontend & Backend Hosting |
 
 ---
 
