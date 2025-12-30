@@ -116,6 +116,22 @@ This project is configured for **Vercel**.
 
 ---
 
+---
+
+## 👥 Team
+
+This project was built with a strong focus on engineering, design, and research collaboration.
+
+| Member | Role | GitHub |
+| :--- | :--- | :--- |
+| **Rajdeep Saha** | ![Fullstack](https://img.shields.io/badge/Fullstack-3b82f6?style=flat-square) ![UI/UX](https://img.shields.io/badge/UI%2FUX-8b5cf6?style=flat-square) | [@C0D3K0NG](https://github.com/C0D3K0NG) |
+| **Debopam Ghosh** | ![Backend](https://img.shields.io/badge/Backend-10b981?style=flat-square) | [@debopamghosh12](https://github.com/debopamghosh12) |
+| **Somyadip Pal** | ![Frontend](https://img.shields.io/badge/Frontend-f97316?style=flat-square) ![Design](https://img.shields.io/badge/Design-ec4899?style=flat-square) | [@Okpiyiii](https://github.com/Okpiyiii) |
+| **Harsvardhan Rajgarhia** | ![Research](https://img.shields.io/badge/Research-eab308?style=flat-square) ![Demo](https://img.shields.io/badge/Demo-64748b?style=flat-square) | [@Harsh1574](https://github.com/Harsh1574) |
+| **Juhi Agarwal** | ![Design](https://img.shields.io/badge/Design-ec4899?style=flat-square) ![Documentation](https://img.shields.io/badge/Docs-06b6d4?style=flat-square) | [@juhi0109](https://github.com/juhi0109) |
+
+---
+
 ## 📄 License
 
 Distributed under the MIT License. See `LICENSE` for more information.
