@@ -73,13 +73,14 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string;
   icon?: React.ReactNode;
   rightIcon?: React.ReactNode;
+  required?: boolean;
 }
 
-export const Input: React.FC<InputProps> = ({ label, icon, rightIcon, className, ...props }) => {
+export const Input: React.FC<InputProps> = ({ label, icon, rightIcon, required, className, ...props }) => {
   return (
     <div className="relative group mb-4">
       <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
-        {label}
+        {label} {required && <span className="text-red-500">*</span>}
       </label>
       <div className="relative">
         <input

@@ -33,7 +33,13 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
   const [selectedDiseases, setSelectedDiseases] = useState<string[]>(state.patient.chronicDiseases || []);
   const [isSaving, setIsSaving] = useState(false);
 
-  const isValid = state.patient.fullName && state.patient.email;
+  const isValid =
+    state.patient.fullName.trim() !== '' &&
+    state.patient.email.trim() !== '' &&
+    state.patient.phone?.trim() !== '' &&
+    state.patient.dateOfBirth?.trim() !== '' &&
+    state.patient.gender &&
+    state.patient.bloodGroup;
 
   const handleContinue = async () => {
     if (!isValid) return;
@@ -194,14 +200,16 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
             type="date"
             value={state.patient.dateOfBirth || ''}
             onChange={(e) => updateState({ patient: { ...state.patient, dateOfBirth: e.target.value } })}
-            icon={<Calendar className="w-4 h-4" />}
+            icon={<User className="w-4 h-4" />}
+            rightIcon={state.patient.fullName.length > 2 ? <Check className="w-4 h-4 text-green-500" /> : undefined}
+            required
           />
 
           <div className="grid grid-cols-2 gap-4">
             {/* Gender Dropdown */}
             <div className="relative group">
               <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
-                Gender
+                Gender <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
@@ -224,7 +232,7 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
             {/* Blood Group Dropdown */}
             <div className="relative group">
               <label className="block text-xs font-medium text-slate-500 mb-1.5 uppercase tracking-wider ml-1">
-                Blood Group
+                Blood Group <span className="text-red-500">*</span>
               </label>
               <div className="relative">
                 <select
@@ -264,6 +272,7 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
             value={state.patient.phone}
             onChange={(e) => updateState({ patient: { ...state.patient, phone: e.target.value } })}
             icon={<Phone className="w-4 h-4" />}
+            required
           />
 
           {/* Allergies Multi-Select */}
@@ -383,7 +392,7 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
           </Button>
         </div>
       </GlassCard>
-    </motion.div>
+    </motion.div >
   );
 };
 
@@ -419,6 +428,7 @@ const DiagnosisStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
               value={state.diagnosis.primaryDiagnosis}
               onChange={(e) => updateState({ diagnosis: { ...state.diagnosis, primaryDiagnosis: e.target.value } })}
               icon={<Activity className="w-4 h-4" />}
+              required
             />
 
             <div className="relative group mb-4">
@@ -782,10 +792,31 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
 
 // 4. Plan Selection
 const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevStep }) => {
+  // Calculate Total Base Price from sum of medicines
+  const totalBasePrice = state.medicines.reduce((sum, med) => sum + (med.price || 0), 0);
+
   const plans: SubscriptionPlan[] = [
-    { id: 'p1', name: 'Single Fill', billingInterval: 'One-time', discountPercentage: 0, description: 'One-time delivery for the specified duration.' },
-    { id: 'p2', name: 'Smart Refill', billingInterval: 'Monthly', discountPercentage: 15, description: 'Auto-refills every 30 days. Pause anytime.' },
-    { id: 'p3', name: 'Quarterly Saver', billingInterval: 'Quarterly', discountPercentage: 25, description: 'Best value. Refills every 90 days.' },
+    {
+      id: 'single',
+      name: 'Single Refill',
+      billingInterval: 'One-time',
+      discountPercentage: 10,
+      description: 'One-time purchase. Good for trying out.'
+    },
+    {
+      id: 'smart',
+      name: 'Smart Refill',
+      billingInterval: 'Monthly',
+      discountPercentage: 3,
+      description: 'Auto-refills every month. Best value & convenience.'
+    },
+    {
+      id: 'quarterly',
+      name: 'Quarterly Saver',
+      billingInterval: 'Quarterly',
+      discountPercentage: 5,
+      description: 'Bulk savings. Refills every 3 months.'
+    },
   ];
 
   return (
@@ -793,11 +824,16 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
       <div className="text-center mb-10">
         <h2 className="text-3xl font-light text-slate-800">Choose your plan</h2>
         <p className="text-slate-500 font-light mt-2">Flexible options designed for adherence.</p>
+        <p className="text-xs font-semibold text-slate-400 mt-4 uppercase tracking-widest">
+          Total Medicine Value: <span className="text-slate-700">₹{totalBasePrice.toFixed(2)}</span>
+        </p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map(plan => {
           const isSelected = state.selectedPlan?.id === plan.id;
+          const discountedPrice = totalBasePrice * (1 - plan.discountPercentage / 100);
+
           return (
             <div
               key={plan.id}
@@ -819,9 +855,12 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 
               <div className="my-6">
                 <span className="text-3xl font-light text-slate-900">
-                  ${(50 * (1 - plan.discountPercentage / 100)).toFixed(0)}
+                  ₹{discountedPrice.toFixed(0)}
                 </span>
                 <span className="text-slate-400 text-sm"> / shipment</span>
+                {plan.discountPercentage > 0 && (
+                  <div className="text-xs text-slate-400 line-through mt-1">₹{totalBasePrice.toFixed(0)}</div>
+                )}
               </div>
 
               <p className="text-sm text-slate-500 leading-relaxed mb-6 flex-grow">
@@ -898,7 +937,9 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
 
       // Step 2: Process payment and save to Supabase
       console.log('Processing payment...');
-      const totalAmount = 50 * (1 - (state.selectedPlan.discountPercentage || 0) / 100);
+      const totalBasePrice = state.medicines.reduce((sum, med) => sum + (med.price || 0), 0);
+      const totalAmount = totalBasePrice * (1 - (state.selectedPlan.discountPercentage || 0) / 100);
+
       const paymentResult = await processPayment(
         state.patient.patientId!,  // Use generated patient UUID
         subscriptionIds,
@@ -944,6 +985,10 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
     );
   }
 
+  // Calculate totals for render
+  const totalBasePrice = state.medicines.reduce((sum, med) => sum + (med.price || 0), 0);
+  const totalDue = totalBasePrice * (1 - (state.selectedPlan?.discountPercentage || 0) / 100);
+
   return (
     <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
       {/* Summary Column */}
@@ -953,16 +998,17 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
           {state.medicines.map(m => (
             <div key={m.id} className="flex justify-between text-sm">
               <span className="text-slate-700">{m.name} <span className="text-slate-400">x {m.durationDays} days</span></span>
-              <span className="font-medium text-slate-900">$15.00</span>
+              <span className="font-medium text-slate-900">₹{m.price?.toFixed(0) || 0}</span>
             </div>
           ))}
           <div className="h-px bg-slate-200 my-2" />
           <div className="flex justify-between text-base font-medium">
             <span>Total due today</span>
-            <span>${(50 * (1 - (state.selectedPlan?.discountPercentage || 0) / 100)).toFixed(2)}</span>
+            <span>₹{totalDue.toFixed(0)}</span>
           </div>
           <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-700 mt-2">
             Plan: {state.selectedPlan?.name} ({state.selectedPlan?.billingInterval})
+            {state.selectedPlan?.discountPercentage ? ` - ${state.selectedPlan.discountPercentage}% Savings Applied` : ''}
           </div>
         </GlassCard>
       </div>
@@ -999,9 +1045,14 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
                 </div>
               </div>
             )}
-            <Button onClick={handlePay} isLoading={loading} className="w-full">
-              Pay & Subscribe
-            </Button>
+            <div className="flex gap-3">
+              <Button variant="ghost" onClick={prevStep} disabled={loading} className="flex-1">
+                Back
+              </Button>
+              <Button onClick={handlePay} isLoading={loading} className="flex-[2]">
+                Pay & Subscribe
+              </Button>
+            </div>
             <p className="text-center text-xs text-slate-400 mt-3 flex items-center justify-center">
               <ShieldCheck className="w-3 h-3 mr-1" /> SSL Secure Transaction
             </p>
