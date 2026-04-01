@@ -133,9 +133,13 @@ def login_user(data: LoginInput):
 def search_medicine(query: str):
     print(f"[SEARCH] Searching: {query}")
     try:
-        response = supabase.table('medicines').select('*').ilike('brand_name', f"%{query}%").limit(20).execute()
+        response = supabase.table('medicines').select('id, brand_name, issue_solved, net_qty, price').ilike('brand_name', f"%{query}%").limit(20).execute()
+        print(f"[SEARCH] Found {len(response.data)} medicines")
+        for medicine in response.data:
+            print(f"  - {medicine.get('brand_name')}: ₹{medicine.get('price')}")
         return {"status": "success", "count": len(response.data), "results": response.data}
     except Exception as e:
+        print(f"[SEARCH] Error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
 # 🧠 Feature 3: AI Prescription Scanner

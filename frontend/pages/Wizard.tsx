@@ -514,7 +514,7 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
     const dosage_per_day = Math.ceil(interval / duration);
 
     const newMedicine: Medicine = {
-      id: selectedMedicine.med_id?.toString() || selectedMedicine.id?.toString(),
+      id: selectedMedicine.med_id?.toString() || selectedMedicine.id?.toString() || Math.random().toString(),
       name: selectedMedicine.brand_name,
       company: '', // Not in DB
       status: 'In Stock',
@@ -533,7 +533,7 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
       // Store additional info
       issue_solved: selectedMedicine.issue_solved,
       net_qty: selectedMedicine.net_qty,
-      price: selectedMedicine.price,
+      price: selectedMedicine.price || 0,
       interval: interval,
     };
 
@@ -791,12 +791,15 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
   // Calculate total medicine cost
   const calculateTotalCost = () => {
     return state.medicines.reduce((total, med) => {
-      const price = med.price || 0;
-      return total + price;
+      // Try to get price from various sources
+      const price = med.price || med.mappedProduct?.pricePerUnit || 0;
+      console.log(`💰 Medicine: ${med.name}, Price: ${price}`);
+      return total + (parseFloat(price as any) || 0);
     }, 0);
   };
 
   const totalMedicineCost = calculateTotalCost();
+  console.log('📊 Total Medicine Cost:', totalMedicineCost);
 
   return (
     <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-4xl mx-auto">
@@ -869,12 +872,15 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
   // Calculate total medicine cost
   const calculateTotalCost = () => {
     return state.medicines.reduce((total, med) => {
-      const price = med.price || 0;
-      return total + price;
+      // Try to get price from various sources
+      const price = med.price || med.mappedProduct?.pricePerUnit || 0;
+      console.log(`💰 Medicine: ${med.name}, Price: ${price}`);
+      return total + (parseFloat(price as any) || 0);
     }, 0);
   };
 
   const totalMedicineCost = calculateTotalCost();
+  console.log('📊 Total Medicine Cost:', totalMedicineCost);
   const discountedAmount = totalMedicineCost * (1 - (state.selectedPlan?.discountPercentage || 0) / 100);
 
   const handlePay = async () => {
@@ -976,7 +982,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
           {state.medicines.map(m => (
             <div key={m.id} className="flex justify-between text-sm">
               <span className="text-slate-700">{m.name} <span className="text-slate-400">x {m.durationDays} days</span></span>
-              <span className="font-medium text-slate-900">₹{(m.price || 0).toFixed(2)}</span>
+              <span className="font-medium text-slate-900">₹{(m.price || m.mappedProduct?.pricePerUnit || 0).toFixed(2)}</span>
             </div>
           ))}
           <div className="h-px bg-slate-200 my-2" />
