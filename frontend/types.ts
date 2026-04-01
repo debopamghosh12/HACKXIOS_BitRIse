@@ -41,6 +41,7 @@ export interface Medicine {
   net_qty?: string;
   price?: number;
   interval?: number; // Refill interval in days
+  isPendingPurchase?: boolean; // True until payment succeeds
 }
 
 export interface ProductMapping {

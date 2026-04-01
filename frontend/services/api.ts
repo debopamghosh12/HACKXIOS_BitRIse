@@ -318,7 +318,8 @@ export const getUserSubscriptions = async (patientId: string) => {
         },
         issue_solved: medDetails?.issue_solved,
         price: medDetails?.price,
-        interval: 30 // Default refill interval
+        interval: 30, // Default refill interval
+        isPendingPurchase: false
       };
     });
 

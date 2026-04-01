@@ -551,6 +551,7 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
       net_qty: selectedMedicine.net_qty,
       price: numericPrice,
       interval: interval,
+      isPendingPurchase: true,
     };
 
     console.log('✅ New medicine object created:', newMedicine);
@@ -797,7 +798,7 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
 
       <div className="mt-8 flex gap-3">
         <Button variant="ghost" onClick={prevStep}>Back</Button>
-        <Button onClick={nextStep} disabled={state.medicines.length === 0} className="flex-1">
+        <Button onClick={nextStep} disabled={!state.medicines.some(m => m.isPendingPurchase)} className="flex-1">
           Review Plan
         </Button>
       </div>
@@ -812,13 +813,15 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
     { id: 'p3', name: 'Quarterly Saver', billingInterval: 'Quarterly', discountPercentage: 25, description: 'Best value. Refills every 90 days.' },
   ];
 
+  const payableMedicines = state.medicines.filter(m => m.isPendingPurchase);
+
   // Calculate total medicine cost
   const calculateTotalCost = () => {
     console.log('📊 === CALCULATING TOTAL COST (PLAN STEP) ===');
-    console.log('📊 Total medicines in state:', state.medicines.length);
-    console.log('📊 Full medicines state:', JSON.stringify(state.medicines, null, 2));
+    console.log('📊 Total medicines in state:', payableMedicines.length);
+    console.log('📊 Full medicines state:', JSON.stringify(payableMedicines, null, 2));
     
-    const total = state.medicines.reduce((total, med, index) => {
+    const total = payableMedicines.reduce((total, med, index) => {
       // Try to get price from various sources
       const priceFromMed = med.price;
       const priceFromMapped = med.mappedProduct?.pricePerUnit;
@@ -846,6 +849,9 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
         <h2 className="text-3xl font-light text-slate-800">Choose your plan</h2>
         <p className="text-slate-500 font-light mt-2">Flexible options designed for adherence.</p>
         <p className="text-slate-400 text-sm mt-2">TOTAL MEDICINE VALUE: ₹{totalMedicineCost.toFixed(2)}</p>
+        {payableMedicines.length === 0 && (
+          <p className="text-amber-600 text-sm mt-2">Add a new medicine to continue to payment.</p>
+        )}
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -895,7 +901,7 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 
       <div className="mt-12 flex justify-center gap-4">
         <Button variant="ghost" onClick={prevStep}>Back</Button>
-        <Button onClick={nextStep} disabled={!state.selectedPlan} className="min-w-[200px]">
+        <Button onClick={nextStep} disabled={!state.selectedPlan || payableMedicines.length === 0} className="min-w-[200px]">
           Proceed to Checkout
         </Button>
       </div>
@@ -957,13 +963,14 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
   const isCvcValid = /^\d{3,4}$/.test(cvc);
   const isNameValid = cardholderName.trim().length >= 2 && /^[a-zA-Z ]+$/.test(cardholderName.trim());
   const isFormValid = isCardNumberValid && isExpiryValid && isCvcValid && isNameValid;
+  const payableMedicines = state.medicines.filter(m => m.isPendingPurchase);
 
   // Calculate total medicine cost
   const calculateTotalCost = () => {
     console.log('📊 === CALCULATING TOTAL COST (PAYMENT STEP) ===');
-    console.log('📊 Total medicines in state:', state.medicines.length);
+    console.log('📊 Total medicines in state:', payableMedicines.length);
     
-    const total = state.medicines.reduce((total, med, index) => {
+    const total = payableMedicines.reduce((total, med, index) => {
       // Try to get price from various sources
       const priceFromMed = med.price;
       const priceFromMapped = med.mappedProduct?.pricePerUnit;
@@ -993,7 +1000,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
     console.log('Patient Email:', state.patient.email);
     console.log('Patient Full Name:', state.patient.fullName);
     console.log('Selected Plan:', state.selectedPlan);
-    console.log('Medicines Count:', state.medicines.length);
+    console.log('Medicines Count:', payableMedicines.length);
     console.log('========================');
 
     if (!isFormValid) {
@@ -1013,6 +1020,11 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
       return;
     }
 
+    if (payableMedicines.length === 0) {
+      setError('No new medicine selected for purchase.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     updateState({ paymentStatus: 'processing' });
@@ -1022,7 +1034,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
       console.log('Creating subscriptions...');
       const subscriptions = await createSubscriptions(
         state.patient.patientId!,  // Use generated patient UUID
-        state.medicines,
+        payableMedicines,
         state.selectedPlan
       );
 
@@ -1047,10 +1059,13 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
 
       // Step 3: Add medicine routines/reminders
       console.log('Adding routines...');
-      await addRoutines(state.patient.patientId, state.medicines);  // Use patientId (number)
+      await addRoutines(state.patient.patientId, payableMedicines);  // Use patientId (number)
 
       // Success!
-      updateState({ paymentStatus: 'success' });
+      updateState({
+        paymentStatus: 'success',
+        medicines: state.medicines.map(m => m.isPendingPurchase ? { ...m, isPendingPurchase: false } : m)
+      });
       setLoading(false);
 
       setTimeout(() => {
@@ -1087,12 +1102,15 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
       <div className="space-y-6">
         <h3 className="text-xl font-light text-slate-800">Order Summary</h3>
         <GlassCard className="space-y-4">
-          {state.medicines.map(m => (
+          {payableMedicines.map(m => (
             <div key={m.id} className="flex justify-between text-sm">
               <span className="text-slate-700">{m.name} <span className="text-slate-400">x {m.durationDays} days</span></span>
               <span className="font-medium text-slate-900">₹{(m.price || m.mappedProduct?.pricePerUnit || 0).toFixed(2)}</span>
             </div>
           ))}
+          {payableMedicines.length === 0 && (
+            <p className="text-sm text-slate-500">No new medicine pending payment.</p>
+          )}
           <div className="h-px bg-slate-200 my-2" />
           <div className="flex justify-between text-base font-medium">
             <span>Total due today</span>
@@ -1197,7 +1215,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
                 </div>
               </div>
             )}
-            <Button onClick={handlePay} isLoading={loading} disabled={!isFormValid} className="w-full">
+            <Button onClick={handlePay} isLoading={loading} disabled={!isFormValid || payableMedicines.length === 0} className="w-full">
               Pay & Subscribe
             </Button>
             <p className="text-center text-xs text-slate-400 mt-3 flex items-center justify-center">

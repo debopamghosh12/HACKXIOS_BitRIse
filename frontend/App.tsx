@@ -291,6 +291,7 @@ const App: React.FC = () => {
             frequency: 'Once daily',
             durationDays: 30,
             price: safePrice,
+            isPendingPurchase: true,
             mappedProduct: {
                 productName: rec.name,
                 company: 'Wellness Inc.',
