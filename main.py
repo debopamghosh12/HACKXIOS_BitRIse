@@ -136,10 +136,19 @@ def search_medicine(query: str):
         response = supabase.table('medicines').select('id, brand_name, issue_solved, net_qty, price').ilike('brand_name', f"%{query}%").limit(20).execute()
         print(f"[SEARCH] Found {len(response.data)} medicines")
         for medicine in response.data:
-            print(f"  - {medicine.get('brand_name')}: ₹{medicine.get('price')}")
+            price = medicine.get('price')
+            price_type = type(price).__name__
+            print(f"  - {medicine.get('brand_name')}: {price} (type: {price_type})")
+        
+        # Also print the raw JSON response for first result
+        if response.data:
+            print(f"[SEARCH] First result full object: {response.data[0]}")
+        
         return {"status": "success", "count": len(response.data), "results": response.data}
     except Exception as e:
         print(f"[SEARCH] Error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 # 🧠 Feature 3: AI Prescription Scanner

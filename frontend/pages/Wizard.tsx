@@ -504,6 +504,9 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
   const handleAddMedicine = () => {
     console.log('🔘 Add Medicine button clicked');
     console.log('Selected medicine:', selectedMedicine);
+    console.log('🏷️ Selected medicine price value:', selectedMedicine?.price);
+    console.log('🏷️ Selected medicine price type:', typeof selectedMedicine?.price);
+    console.log('🏷️ Selected medicine all fields:', Object.keys(selectedMedicine || {}));
 
     if (!selectedMedicine) {
       console.error('❌ No medicine selected!');
@@ -512,6 +515,10 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
 
     // Calculate dosage_per_day from duration and interval
     const dosage_per_day = Math.ceil(interval / duration);
+
+    const priceValue = selectedMedicine.price || 0;
+    console.log('💰 Final price to be stored:', priceValue);
+    console.log('💰 Duration:', duration, 'Interval:', interval);
 
     const newMedicine: Medicine = {
       id: selectedMedicine.med_id?.toString() || selectedMedicine.id?.toString() || Math.random().toString(),
@@ -526,18 +533,19 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
       mappedProduct: {
         productName: selectedMedicine.brand_name,
         company: '',
-        pricePerUnit: selectedMedicine.price || 0,
+        pricePerUnit: priceValue,
         packSize: selectedMedicine.net_qty || '',
         inStock: true,
       },
       // Store additional info
       issue_solved: selectedMedicine.issue_solved,
       net_qty: selectedMedicine.net_qty,
-      price: selectedMedicine.price || 0,
+      price: priceValue,
       interval: interval,
     };
 
     console.log('✅ New medicine object created:', newMedicine);
+    console.log('✅ Price stored in medicine object:', newMedicine.price);
     updateState({ medicines: [...state.medicines, newMedicine] });
     console.log('✅ State updated with new medicine');
 
@@ -713,8 +721,11 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
                     <label className="block text-xs font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
                       Price
                     </label>
-                    <div className="px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed font-medium">
-                      ₹{selectedMedicine.price || 0}
+                    <div className="px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-slate-800 cursor-not-allowed font-medium">
+                      ₹{(parseFloat(selectedMedicine.price as any) || 0).toFixed(2)}
+                      <div className="text-xs text-slate-400 mt-1">
+                        (Raw: {selectedMedicine.price}, Type: {typeof selectedMedicine.price})
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -780,7 +791,6 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
   );
 };
 
-// 4. Plan Selection
 const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevStep }) => {
   const plans: SubscriptionPlan[] = [
     { id: 'p1', name: 'Single Fill', billingInterval: 'One-time', discountPercentage: 0, description: 'One-time delivery for the specified duration.' },
@@ -790,16 +800,30 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 
   // Calculate total medicine cost
   const calculateTotalCost = () => {
-    return state.medicines.reduce((total, med) => {
+    console.log('📊 === CALCULATING TOTAL COST (PLAN STEP) ===');
+    console.log('📊 Total medicines in state:', state.medicines.length);
+    
+    const total = state.medicines.reduce((total, med, index) => {
       // Try to get price from various sources
-      const price = med.price || med.mappedProduct?.pricePerUnit || 0;
-      console.log(`💰 Medicine: ${med.name}, Price: ${price}`);
+      const priceFromMed = med.price;
+      const priceFromMapped = med.mappedProduct?.pricePerUnit;
+      const price = priceFromMed || priceFromMapped || 0;
+      
+      console.log(`📊 Medicine ${index + 1}: ${med.name}`);
+      console.log(`   - med.price: ${priceFromMed}`);
+      console.log(`   - med.mappedProduct?.pricePerUnit: ${priceFromMapped}`);
+      console.log(`   - Final price used: ${price}`);
+      console.log(`   - Running total: ${total} + ${price} = ${total + (parseFloat(price as any) || 0)}`);
+      
       return total + (parseFloat(price as any) || 0);
     }, 0);
+    
+    console.log('📊 === FINAL TOTAL: ₹' + total.toFixed(2) + ' ===');
+    return total;
   };
 
   const totalMedicineCost = calculateTotalCost();
-  console.log('📊 Total Medicine Cost:', totalMedicineCost);
+  console.log('📊 Total Medicine Cost state:', totalMedicineCost);
 
   return (
     <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-4xl mx-auto">
@@ -871,16 +895,30 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
 
   // Calculate total medicine cost
   const calculateTotalCost = () => {
-    return state.medicines.reduce((total, med) => {
+    console.log('📊 === CALCULATING TOTAL COST (PAYMENT STEP) ===');
+    console.log('📊 Total medicines in state:', state.medicines.length);
+    
+    const total = state.medicines.reduce((total, med, index) => {
       // Try to get price from various sources
-      const price = med.price || med.mappedProduct?.pricePerUnit || 0;
-      console.log(`💰 Medicine: ${med.name}, Price: ${price}`);
+      const priceFromMed = med.price;
+      const priceFromMapped = med.mappedProduct?.pricePerUnit;
+      const price = priceFromMed || priceFromMapped || 0;
+      
+      console.log(`📊 Medicine ${index + 1}: ${med.name}`);
+      console.log(`   - med.price: ${priceFromMed}`);
+      console.log(`   - med.mappedProduct?.pricePerUnit: ${priceFromMapped}`);
+      console.log(`   - Final price used: ${price}`);
+      console.log(`   - Running total: ${total} + ${price} = ${total + (parseFloat(price as any) || 0)}`);
+      
       return total + (parseFloat(price as any) || 0);
     }, 0);
+    
+    console.log('📊 === FINAL TOTAL: ₹' + total.toFixed(2) + ' ===');
+    return total;
   };
 
   const totalMedicineCost = calculateTotalCost();
-  console.log('📊 Total Medicine Cost:', totalMedicineCost);
+  console.log('📊 Total Medicine Cost state:', totalMedicineCost);
   const discountedAmount = totalMedicineCost * (1 - (state.selectedPlan?.discountPercentage || 0) / 100);
 
   const handlePay = async () => {
