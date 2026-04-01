@@ -456,21 +456,52 @@ export const getUserSubscriptions = async (patientId: string) => {
 
     let routineFallbackIdx = 0;
 
+    const namesNeedingLookup = Array.from(new Set(
+      subs
+        .map((sub: any) => {
+          const subMedId = Number(sub.medicine_id);
+          const hasMappedById = Number.isFinite(subMedId) && medicinesMap.has(subMedId);
+          if (hasMappedById) return '';
+          return String(sub?.medicine_name || sub?.medicine?.brand_name || '').trim();
+        })
+        .filter((name: string) => !!name)
+    ));
+
+    const medicinesByName = new Map<string, any>();
+    if (namesNeedingLookup.length > 0) {
+      const { data: medsByName, error: medsByNameError } = await supabase
+        .from('medicines')
+        .select('*')
+        .in('brand_name', namesNeedingLookup);
+
+      if (medsByNameError) {
+        console.warn('Could not fetch medicine details by name lookup:', medsByNameError);
+      } else {
+        for (const med of medsByName || []) {
+          const key = String(med.brand_name || '').trim().toLowerCase();
+          if (key) medicinesByName.set(key, med);
+        }
+      }
+    }
+
     const mappedMedicines: Medicine[] = subs.map(sub => {
       const medId = Number(sub.medicine_id);
-      const medDetails = medicinesMap.get(medId);
+      const medDetailsById = medicinesMap.get(medId);
       const routineFallbackName = routineNames[routineFallbackIdx] || '';
       if ((!Number.isFinite(medId) || medId <= 0) && routineFallbackName) {
         routineFallbackIdx += 1;
       }
 
       const resolvedName =
-        medDetails?.brand_name ||
-        medDetails?.name ||
+        medDetailsById?.brand_name ||
+        medDetailsById?.name ||
         sub?.medicine_name ||
         sub?.medicine?.brand_name ||
         routineFallbackName ||
         ((Number.isFinite(medId) && medId > 0) ? `Medicine #${medId}` : 'Medicine');
+
+      const medDetailsByName = medicinesByName.get(String(resolvedName).trim().toLowerCase());
+      const medDetails = medDetailsById || medDetailsByName;
 
       const resolvedPack = medDetails?.net_qty || medDetails?.pack_size || '';
       const resolvedPrice = Number(medDetails?.price ?? sub?.price ?? 0) || 0;
