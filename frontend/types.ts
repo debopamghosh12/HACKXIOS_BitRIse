@@ -82,6 +82,7 @@ export interface AppState {
   takenMeds: string[]; // Keep for backward compatibility if needed, or remove later
   routineItems: RoutineItem[];
   completedRoutineIds: string[];
+  routineCompletionLog: Record<string, string>; // key: YYYY-MM-DD:medicineId, value: ISO timestamp
   profiles: Patient[]; // Store all user profiles
 }
 
@@ -117,5 +118,6 @@ export const INITIAL_STATE: AppState = {
   takenMeds: [],
   routineItems: [],
   completedRoutineIds: [],
+  routineCompletionLog: {},
   profiles: [],
 };

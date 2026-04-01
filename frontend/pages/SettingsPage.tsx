@@ -40,6 +40,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({ state, updateState, 
         takenMeds: [],
         routineItems: [],
         completedRoutineIds: [],
+        routineCompletionLog: {},
         profiles: []
       });
     } catch (err) {

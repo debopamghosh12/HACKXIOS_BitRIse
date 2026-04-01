@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Pill, Home, Search, Package, Settings, LogOut, User, Plus, Check, Users, ShoppingBag } from 'lucide-react';
 import { AppState, INITIAL_STATE, Step, WizardStep, ActiveTab, Medicine, RoutineItem } from './types';
@@ -18,6 +18,7 @@ const App: React.FC = () => {
     const [state, setState] = useState<AppState>(INITIAL_STATE);
     const [isCheckingSession, setIsCheckingSession] = useState(true);
     const [showProfileMenu, setShowProfileMenu] = useState(false); // Local state for dropdown
+    const lastNotifiedMinuteRef = useRef<string>('');
 
     const updateState = (updates: Partial<AppState>) => {
         setState(prev => ({ ...prev, ...updates }));
@@ -387,12 +388,60 @@ const App: React.FC = () => {
     };
 
     const toggleRoutineItem = (id: string) => {
-        const isCompleted = state.completedRoutineIds.includes(id);
-        const newCompleted = isCompleted
-            ? state.completedRoutineIds.filter(i => i !== id)
-            : [...state.completedRoutineIds, id];
-        updateState({ completedRoutineIds: newCompleted });
+        const today = new Date().toISOString().split('T')[0];
+        const dailyKey = `${today}:${id}`;
+        const isCompletedToday = state.completedRoutineIds.includes(dailyKey);
+
+        if (isCompletedToday) {
+            const newCompleted = state.completedRoutineIds.filter(i => i !== dailyKey);
+            const newLog = { ...state.routineCompletionLog };
+            delete newLog[dailyKey];
+            updateState({ completedRoutineIds: newCompleted, routineCompletionLog: newLog });
+            return;
+        }
+
+        const completionTime = new Date().toISOString();
+        updateState({
+            completedRoutineIds: [...state.completedRoutineIds, dailyKey],
+            routineCompletionLog: {
+                ...state.routineCompletionLog,
+                [dailyKey]: completionTime,
+            }
+        });
     };
+
+    useEffect(() => {
+        if (state.step !== 'app') return;
+        if (!state.notificationSettings.pushEnabled) return;
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+        const timer = setInterval(() => {
+            const now = new Date();
+            const currentTime = now.toTimeString().slice(0, 5);
+            const reminderTime = state.notificationSettings.refillReminderTime;
+
+            if (currentTime !== reminderTime) return;
+
+            const minuteKey = `${now.toISOString().split('T')[0]}:${currentTime}`;
+            if (lastNotifiedMinuteRef.current === minuteKey) return;
+
+            const today = now.toISOString().split('T')[0];
+            const pendingMeds = state.medicines.filter((med) => !state.completedRoutineIds.includes(`${today}:${med.id}`));
+
+            if (pendingMeds.length > 0) {
+                const names = pendingMeds.slice(0, 2).map((m) => m.name).join(', ');
+                const suffix = pendingMeds.length > 2 ? ` +${pendingMeds.length - 2} more` : '';
+                new Notification('Medicine Reminder', {
+                    body: `It's ${reminderTime}. Time to take: ${names}${suffix}`,
+                    icon: '/favicon.ico'
+                });
+            }
+
+            lastNotifiedMinuteRef.current = minuteKey;
+        }, 30000);
+
+        return () => clearInterval(timer);
+    }, [state.step, state.notificationSettings.pushEnabled, state.notificationSettings.refillReminderTime, state.medicines, state.completedRoutineIds]);
 
     // Show loading screen while checking session
     if (isCheckingSession) {
@@ -632,6 +681,7 @@ const App: React.FC = () => {
                                 <SubscriptionPage
                                     state={state}
                                     updateState={updateState}
+                                    toggleRoutineItem={toggleRoutineItem}
                                     goToSearch={() => handleTabChange('search')}
                                 />
                             )}

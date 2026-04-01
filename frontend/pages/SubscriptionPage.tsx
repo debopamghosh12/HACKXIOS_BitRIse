@@ -8,11 +8,14 @@ import { getNextRefillDate } from '../utils/dateUtils';
 interface SubscriptionPageProps {
   state: AppState;
   updateState?: (updates: Partial<AppState>) => void;
+  toggleRoutineItem?: (id: string) => void;
   goToSearch: () => void;
 }
 
-export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updateState, goToSearch }) => {
+export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updateState, toggleRoutineItem, goToSearch }) => {
   const hasPlan = state.selectedPlan !== null;
+  const today = new Date().toISOString().split('T')[0];
+  const reminderTime = state.notificationSettings.refillReminderTime || '08:00';
   // Calculate consistent billing date
   const nextBillingDate = getNextRefillDate(new Date(), 30);
   // ...
@@ -111,10 +114,23 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updat
           {state.medicines.map((med) => (
             <GlassCard key={med.id} className="p-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">08:00</div>
-                <span className="font-medium text-slate-700">{med.name}</span>
+                <div className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">{reminderTime}</div>
+                <div>
+                  <span className="font-medium text-slate-700">{med.name}</span>
+                  {state.routineCompletionLog?.[`${today}:${med.id}`] && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Taken at {new Date(state.routineCompletionLog[`${today}:${med.id}`]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </p>
+                  )}
+                </div>
               </div>
-              <button className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center text-slate-300 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500">
+              <button
+                onClick={() => toggleRoutineItem && toggleRoutineItem(med.id)}
+                className={`w-8 h-8 rounded-full border flex items-center justify-center ${state.completedRoutineIds.includes(`${today}:${med.id}`)
+                  ? 'bg-blue-500 border-blue-500 text-white'
+                  : 'border-slate-200 text-slate-300 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-500'
+                  }`}
+              >
                 <Check className="w-4 h-4" />
               </button>
             </GlassCard>

@@ -231,6 +231,8 @@ export const DailyRoutineWidget: React.FC<{
    toggleRoutineItem?: (id: string) => void;
 }> = ({ state, toggleRoutineItem, addRoutineItem }) => {
    const [isModalOpen, setIsModalOpen] = useState(false);
+   const today = new Date().toISOString().split('T')[0];
+   const reminderTime = state.notificationSettings.refillReminderTime || '08:00';
 
    // Helper to get icon
    const getIcon = (type: RoutineItem['type']) => {
@@ -251,7 +253,7 @@ export const DailyRoutineWidget: React.FC<{
       const subscriptionMeds: RoutineItem[] = state.medicines.map(med => ({
          id: med.id,
          title: med.name,
-         time: '08:00', // Default morning time for plan meds
+         time: reminderTime,
          type: (med.form as RoutineItem['type']) || 'Tablet'
       }));
 
@@ -285,7 +287,8 @@ export const DailyRoutineWidget: React.FC<{
                   </div>
                ) : (
                   allMedications.map((item) => {
-                     const isCompleted = state.completedRoutineIds.includes(item.id);
+                     const dailyKey = `${today}:${item.id}`;
+                     const isCompleted = state.completedRoutineIds.includes(dailyKey);
                      const Icon = getIcon(item.type);
 
                      return (
