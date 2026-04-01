@@ -1,11 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Supabase configuration
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const DEFAULT_SUPABASE_URL = 'https://zoinfprgsuuzqkcejuxx.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvaW5mcHJnc3V1enFrY2VqdXh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzUzOTgzNDksImV4cCI6MjA1MDk3NDM0OX0.KxJCBhQmMPgIgVHxjdTpWGPEJjxQkqIFiMnDnFPZIjc';
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials not found. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env.local file');
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_ANON_KEY;
+
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+  console.warn('Using default Supabase credentials fallback. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in env for explicit config.');
 }
 
 // Create Supabase client
