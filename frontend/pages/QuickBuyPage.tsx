@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Search, Plus, Trash2, ShoppingBag, CreditCard, ShieldCheck } from 'lucide-react';
+import { Search, Plus, Minus, Trash2, ShoppingBag, CreditCard, ShieldCheck } from 'lucide-react';
 import { AppState } from '../types';
 import { GlassCard, Button, Input } from '../components/UI';
 import { processQuickBuyPayment, searchMedicines } from '../services/api';
@@ -82,6 +82,14 @@ export const QuickBuyPage: React.FC<QuickBuyPageProps> = ({ state }) => {
 
   const removeFromCart = (id: string) => {
     setCart(prev => prev.filter(item => item.id !== id));
+  };
+
+  const increaseQuantity = (id: string) => {
+    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: item.quantity + 1 } : item));
+  };
+
+  const decreaseQuantity = (id: string) => {
+    setCart(prev => prev.map(item => item.id === id ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item));
   };
 
   const handleQuickPay = async () => {
@@ -183,7 +191,24 @@ export const QuickBuyPage: React.FC<QuickBuyPageProps> = ({ state }) => {
               <div key={item.id} className="flex items-center justify-between rounded-xl border border-slate-200 bg-white/70 p-3">
                 <div>
                   <p className="text-sm font-medium text-slate-800">{item.name}</p>
-                  <p className="text-xs text-slate-500">Qty {item.quantity} • ₹{item.price.toFixed(2)}</p>
+                  <p className="text-xs text-slate-500">Unit ₹{item.price.toFixed(2)} • Subtotal ₹{(item.price * item.quantity).toFixed(2)}</p>
+                  <div className="mt-2 inline-flex items-center rounded-lg border border-slate-200 bg-white">
+                    <button
+                      onClick={() => decreaseQuantity(item.id)}
+                      className="px-2 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-l-lg transition-colors"
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="px-3 py-1 text-xs font-semibold text-slate-700 border-x border-slate-200">{item.quantity}</span>
+                    <button
+                      onClick={() => increaseQuantity(item.id)}
+                      className="px-2 py-1 text-slate-600 hover:text-blue-600 hover:bg-blue-50 rounded-r-lg transition-colors"
+                      aria-label="Increase quantity"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <button onClick={() => removeFromCart(item.id)} className="p-1.5 text-slate-400 hover:text-red-500">
                   <Trash2 className="w-4 h-4" />
