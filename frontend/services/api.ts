@@ -13,6 +13,13 @@ const isNetworkError = (error: unknown) => {
     message.includes('NetworkError');
 };
 
+const normalizeMedicine = (row: any) => ({
+  ...row,
+  id: String(row?.id ?? row?.med_id ?? ''),
+  med_id: row?.med_id ?? row?.id,
+  price: Number(row?.price ?? 0)
+});
+
 /**
  * Search medicines from database by brand name
  */
@@ -36,9 +43,10 @@ export const searchMedicines = async (query: string) => {
     console.log('Search results:', data);
 
     if (data.status === 'success' && data.results && data.results.length > 0) {
+      const normalizedResults = data.results.map(normalizeMedicine);
       return {
-        medicines: data.results,
-        count: data.count
+        medicines: normalizedResults,
+        count: normalizedResults.length
       };
     }
     return null;
@@ -48,7 +56,7 @@ export const searchMedicines = async (query: string) => {
     try {
       const { data, error: supabaseError } = await supabase
         .from('medicines')
-        .select('id, brand_name, issue_solved, net_qty, price')
+        .select('med_id, brand_name, issue_solved, net_qty, price')
         .ilike('brand_name', `%${query}%`)
         .limit(20);
 
@@ -58,10 +66,11 @@ export const searchMedicines = async (query: string) => {
       }
 
       if (data && data.length > 0) {
-        console.log('Supabase fallback search results:', data);
+        const normalizedResults = data.map(normalizeMedicine);
+        console.log('Supabase fallback search results:', normalizedResults);
         return {
-          medicines: data,
-          count: data.length
+          medicines: normalizedResults,
+          count: normalizedResults.length
         };
       }
 
