@@ -6,6 +6,13 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 import { supabase } from './supabase';
 import { Medicine, SubscriptionPlan } from '../types';
 
+const isNetworkError = (error: unknown) => {
+  const message = String((error as any)?.message || error || '');
+  return message.includes('Failed to fetch') ||
+    message.includes('ERR_NAME_NOT_RESOLVED') ||
+    message.includes('NetworkError');
+};
+
 /**
  * Search medicines from database by brand name
  */
@@ -45,27 +52,27 @@ export const createSubscriptions = async (
   medicines: Medicine[],
   plan: SubscriptionPlan
 ) => {
+  const subscriptionsData = medicines.map(medicine => {
+    // Calculate dates
+    const startDate = new Date().toISOString().split('T')[0];
+    const nextRefillDate = new Date();
+    nextRefillDate.setDate(nextRefillDate.getDate() + (medicine.interval || 30));
+
+    return {
+      patient_id: patientId,
+      medicine_id: parseInt(medicine.id),
+      quantity_per_order: parseInt(medicine.dosageQuantity) || 1,
+      dosage_per_day: medicine.frequency === 'Once daily' ? 1 :
+        medicine.frequency === 'Twice daily' ? 2 :
+          medicine.frequency === 'Thrice daily' ? 3 : 1,
+      start_date: startDate,
+      next_refill_date: nextRefillDate.toISOString().split('T')[0],
+      status: 'active'
+    };
+  });
+
   try {
     console.log('Creating subscriptions for patient:', patientId);
-
-    const subscriptionsData = medicines.map(medicine => {
-      // Calculate dates
-      const startDate = new Date().toISOString().split('T')[0];
-      const nextRefillDate = new Date();
-      nextRefillDate.setDate(nextRefillDate.getDate() + (medicine.interval || 30));
-
-      return {
-        patient_id: patientId,
-        medicine_id: parseInt(medicine.id),
-        quantity_per_order: parseInt(medicine.dosageQuantity) || 1,
-        dosage_per_day: medicine.frequency === 'Once daily' ? 1 :
-          medicine.frequency === 'Twice daily' ? 2 :
-            medicine.frequency === 'Thrice daily' ? 3 : 1,
-        start_date: startDate,
-        next_refill_date: nextRefillDate.toISOString().split('T')[0],
-        status: 'active'
-      };
-    });
 
     const { data, error } = await supabase
       .from('subscriptions')
@@ -80,8 +87,50 @@ export const createSubscriptions = async (
     console.log('Subscriptions created:', data);
     return data;
   } catch (error) {
-    console.error('Subscription error:', error);
-    throw error;
+    if (!isNetworkError(error)) {
+      console.error('Subscription error:', error);
+      throw error;
+    }
+
+    console.warn('Supabase network failed, using backend fallback for subscriptions...');
+
+    for (const sub of subscriptionsData) {
+      const response = await fetch(`${API_BASE_URL}/create-subscription`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: sub.patient_id,
+          medicine_id: sub.medicine_id,
+          quantity: sub.quantity_per_order,
+          dosage_per_day: sub.dosage_per_day
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Fallback subscription failed: ${errorText}`);
+      }
+    }
+
+    const dashboardResponse = await fetch(`${API_BASE_URL}/my-dashboard/${encodeURIComponent(patientId)}`);
+    if (!dashboardResponse.ok) {
+      const errorText = await dashboardResponse.text();
+      throw new Error(`Fallback dashboard fetch failed: ${errorText}`);
+    }
+
+    const dashboardData = await dashboardResponse.json();
+    const activeSubs = dashboardData?.active_subscriptions || [];
+
+    const matchedSubs = subscriptionsData.map((sub, index) => {
+      const match = activeSubs.find((item: any) => item.medicine_id === sub.medicine_id && item.patient_id === sub.patient_id);
+      return {
+        id: match?.id || index + 1,
+        medicine_id: sub.medicine_id
+      };
+    });
+
+    console.log('Subscriptions created via fallback:', matchedSubs);
+    return matchedSubs;
   }
 };
 
@@ -129,8 +178,40 @@ export const processPayment = async (
       payments: data
     };
   } catch (error) {
-    console.error('Payment error:', error);
-    throw error;
+    if (!isNetworkError(error)) {
+      console.error('Payment error:', error);
+      throw error;
+    }
+
+    console.warn('Supabase network failed, using backend fallback for payments...');
+
+    const eachAmount = subscriptionIds.length > 0 ? amount / subscriptionIds.length : amount;
+    const fallbackResults: any[] = [];
+
+    for (const subscriptionId of subscriptionIds) {
+      const response = await fetch(`${API_BASE_URL}/process-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: patientId,
+          subscription_id: subscriptionId,
+          amount: eachAmount
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Fallback payment failed: ${errorText}`);
+      }
+
+      fallbackResults.push(await response.json());
+    }
+
+    return {
+      success: true,
+      transactionId: fallbackResults[0]?.txn_id || `TXN_${Date.now()}_FALLBACK`,
+      payments: fallbackResults
+    };
   }
 };
 
@@ -176,7 +257,7 @@ export const getUserSubscriptions = async (patientId: string) => {
       // Fallback: try querying 'id' if 'med_id' fails (or handling error)
     }
 
-    const medicinesMap = new Map(meds?.map(m => [m.med_id, m]) || []);
+    const medicinesMap = new Map<number, any>((meds as any[] | null)?.map((m: any) => [m.med_id, m]) || []);
 
     // 3. Map back to frontend Medicine type
     const mappedMedicines: Medicine[] = subs.map(sub => {
@@ -241,8 +322,34 @@ export const addRoutines = async (
     console.log('Routines created:', data);
     return data;
   } catch (error) {
-    console.error('Routine error:', error);
-    throw error;
+    if (!isNetworkError(error)) {
+      console.error('Routine error:', error);
+      throw error;
+    }
+
+    console.warn('Supabase network failed, using backend fallback for routines...');
+
+    const results: any[] = [];
+    for (const medicine of medicines) {
+      const response = await fetch(`${API_BASE_URL}/add-routine`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: patientId,
+          medicine_name: medicine.name,
+          reminder_time: '09:00 AM'
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Fallback routine failed: ${errorText}`);
+      }
+
+      results.push(await response.json());
+    }
+
+    return results;
   }
 };
 
