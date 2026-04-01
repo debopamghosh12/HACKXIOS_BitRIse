@@ -18,8 +18,11 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updat
   const today = new Date().toISOString().split('T')[0];
   const subscribedMedicines = state.medicines.filter((med) => !med.isPendingPurchase);
   const totalRefillAmount = subscribedMedicines.reduce((sum, med) => {
-    const price = Number(med.price ?? med.mappedProduct?.pricePerUnit ?? 0);
-    return sum + (Number.isFinite(price) ? price : 0);
+    const unitPrice = Number(med.price ?? med.mappedProduct?.pricePerUnit ?? 0);
+    const quantity = Math.max(1, Number(med.dosageQuantity || 1));
+    const safeUnitPrice = Number.isFinite(unitPrice) ? unitPrice : 0;
+    const safeQuantity = Number.isFinite(quantity) ? quantity : 1;
+    return sum + (safeUnitPrice * safeQuantity);
   }, 0);
   // Calculate consistent billing date
   const nextBillingDate = getNextRefillDate(new Date(), 30);

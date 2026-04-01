@@ -27,6 +27,8 @@ export interface Diagnosis {
 
 export interface Medicine {
   id: string;
+  medicineId?: number;
+  subscriptionId?: number;
   name: string;
   company?: string;
   status?: 'In Stock' | 'Low Stock' | 'Out of Stock';

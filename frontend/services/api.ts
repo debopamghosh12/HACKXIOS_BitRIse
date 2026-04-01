@@ -476,7 +476,9 @@ export const getUserSubscriptions = async (patientId: string) => {
       const resolvedPrice = Number(medDetails?.price ?? sub?.price ?? 0) || 0;
 
       return {
-        id: Number.isFinite(medId) ? medId.toString() : String(sub.medicine_id || ''),
+        id: String(sub.id ?? (Number.isFinite(medId) ? medId : sub.medicine_id || '')),
+        medicineId: Number.isFinite(medId) ? medId : undefined,
+        subscriptionId: Number(sub.id) || undefined,
         name: resolvedName,
         strength: resolvedPack, // Approximation
         frequency: sub.dosage_per_day === 1 ? 'Once daily' : sub.dosage_per_day === 2 ? 'Twice daily' : 'Custom',
