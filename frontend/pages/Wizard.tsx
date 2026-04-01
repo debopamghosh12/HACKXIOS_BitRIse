@@ -561,7 +561,7 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
     const updatedMedicines = [...state.medicines, newMedicine];
     console.log('✅ Updated medicines array:', updatedMedicines);
     
-    updateState({ medicines: updatedMedicines });
+    updateState({ medicines: updatedMedicines, paymentStatus: 'idle' });
     console.log('✅ State updated with new medicine');
 
     // Reset form
@@ -1079,7 +1079,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
     }
   };
 
-  if (state.paymentStatus === 'success') {
+  if (state.paymentStatus === 'success' && payableMedicines.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] text-center">
         <motion.div

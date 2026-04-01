@@ -304,7 +304,8 @@ const App: React.FC = () => {
         updateState({
             medicines: [...state.medicines, newMedicine],
             activeTab: 'search',
-            wizardStep: 'plan'
+            wizardStep: 'plan',
+            paymentStatus: 'idle'
         });
     };
 
