@@ -10,7 +10,7 @@ import { DotLottiePlayer } from '@dotlottie/react-player';
 
 // --- Page Sections ---
 
-const Header = ({ onStart }: { onStart: () => void }) => (
+const Header = ({ onSignIn, onGetStarted }: { onSignIn: () => void; onGetStarted: () => void }) => (
   <motion.header
     initial={{ y: -20, opacity: 0 }}
     animate={{ y: 0, opacity: 1 }}
@@ -30,19 +30,19 @@ const Header = ({ onStart }: { onStart: () => void }) => (
 
     <div className="flex items-center gap-4">
       <button
-        onClick={onStart}
+        onClick={onSignIn}
         className="text-sm font-medium text-slate-600 hover:text-blue-600 hidden sm:block"
       >
         Sign In
       </button>
-      <Button onClick={onStart} className="px-5 py-2 text-sm rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20">
+      <Button onClick={onGetStarted} className="px-5 py-2 text-sm rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20">
         Get Started
       </Button>
     </div>
   </motion.header>
 );
 
-const Hero = ({ onStart }: { onStart: () => void }) => {
+const Hero = ({ onGetStarted }: { onGetStarted: () => void }) => {
   return (
     <section className="relative pt-32 pb-20 px-4 flex flex-col items-center text-center max-w-5xl mx-auto">
       <motion.div
@@ -63,7 +63,7 @@ const Hero = ({ onStart }: { onStart: () => void }) => {
           Sanvix seamlessly unifies your prescriptions, schedules, and provider communication into one intuitive, secure system.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          <Button onClick={onStart} className="px-8 py-4 text-base rounded-full shadow-xl shadow-blue-500/25 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 hover:-translate-y-1 transition-all">
+          <Button onClick={onGetStarted} className="px-8 py-4 text-base rounded-full shadow-xl shadow-blue-500/25 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 hover:-translate-y-1 transition-all">
             Get Started Free
           </Button>
           <button className="flex items-center gap-2 px-8 py-4 text-base rounded-full bg-white text-slate-700 border border-slate-200 hover:border-blue-300 hover:text-blue-600 transition-all font-medium group shadow-sm hover:shadow-md">
@@ -396,7 +396,12 @@ const Footer = () => (
 
 // --- Main Page ---
 
-export const LandingPage: React.FC<{ onStart: () => void }> = ({ onStart }) => {
+interface LandingPageProps {
+  onSignIn: () => void;
+  onGetStarted: () => void;
+}
+
+export const LandingPage: React.FC<LandingPageProps> = ({ onSignIn, onGetStarted }) => {
   return (
     <div className="min-h-screen w-full relative overflow-x-hidden selection:bg-blue-100 selection:text-blue-700">
       {/* Background with subtle gradient only, no parallax */}
@@ -405,9 +410,9 @@ export const LandingPage: React.FC<{ onStart: () => void }> = ({ onStart }) => {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.02]"></div>
       </div>
 
-      <Header onStart={onStart} />
+      <Header onSignIn={onSignIn} onGetStarted={onGetStarted} />
       <main>
-        <Hero onStart={onStart} />
+        <Hero onGetStarted={onGetStarted} />
         <SocialProof />
         <Features />
         <HowItWorks />

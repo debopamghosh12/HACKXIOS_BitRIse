@@ -16,6 +16,7 @@ const APP_STATE_STORAGE_KEY = 'sanvix_app_state_v1';
 
 const App: React.FC = () => {
     const [state, setState] = useState<AppState>(INITIAL_STATE);
+    const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
     const [isCheckingSession, setIsCheckingSession] = useState(true);
     const [showProfileMenu, setShowProfileMenu] = useState(false); // Local state for dropdown
     const lastNotifiedMinuteRef = useRef<string>('');
@@ -101,11 +102,18 @@ const App: React.FC = () => {
                         if (persistedRaw) {
                             const persisted = JSON.parse(persistedRaw) as AppState;
                             if (persisted?.patient?.ownerId === session.user.id) {
+                                const pendingLocalMeds = (persisted.medicines || []).filter(m => m.isPendingPurchase);
+                                const fetchedIds = new Set((fetchedMedicines || []).map(m => String(m.id)));
+                                const mergedMedicines = [
+                                    ...(fetchedMedicines || []),
+                                    ...pendingLocalMeds.filter(m => !fetchedIds.has(String(m.id)))
+                                ];
+
                                 restoredState = {
                                     activeTab: persisted.activeTab,
                                     wizardStep: persisted.wizardStep,
                                     diagnosis: persisted.diagnosis,
-                                    medicines: persisted.medicines,
+                                    medicines: mergedMedicines,
                                     selectedPlan: persisted.selectedPlan,
                                     notificationSettings: persisted.notificationSettings,
                                     takenMeds: persisted.takenMeds,
@@ -283,7 +291,7 @@ const App: React.FC = () => {
         const safePrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
 
         const newMedicine: Medicine = {
-            id: Math.random().toString(36).substr(2, 9),
+            id: String(rec.id ?? rec.med_id ?? Math.random().toString(36).substr(2, 9)),
             name: rec.name,
             company: 'Wellness Inc.',
             status: 'In Stock',
@@ -604,7 +612,16 @@ const App: React.FC = () => {
                             transition={{ duration: 0.3 }}
                             className="w-full"
                         >
-                            <LandingPage onStart={() => updateState({ step: 'auth' })} />
+                            <LandingPage
+                                onSignIn={() => {
+                                    setAuthMode('signin');
+                                    updateState({ step: 'auth' });
+                                }}
+                                onGetStarted={() => {
+                                    setAuthMode('signup');
+                                    updateState({ step: 'auth' });
+                                }}
+                            />
                         </motion.div>
                     )}
 
@@ -617,7 +634,11 @@ const App: React.FC = () => {
                             transition={{ duration: 0.3 }}
                             className="w-full"
                         >
-                            <AuthPage onLogin={handleLogin} onBack={() => updateState({ step: 'landing' })} />
+                            <AuthPage
+                                onLogin={handleLogin}
+                                onBack={() => updateState({ step: 'landing' })}
+                                initialMode={authMode}
+                            />
                         </motion.div>
                     )}
 

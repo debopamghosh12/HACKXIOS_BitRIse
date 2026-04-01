@@ -7,6 +7,7 @@ import { signUp, signIn } from '../services/auth';
 interface AuthPageProps {
   onLogin: () => void;
   onBack: () => void;
+  initialMode?: 'signin' | 'signup';
 }
 
 interface FormData {
@@ -17,14 +18,13 @@ interface FormData {
   address?: string;
 }
 
-export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
-  const [isSignUp, setIsSignUp] = useState(false);
+export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack, initialMode = 'signin' }) => {
+  const [isSignUp, setIsSignUp] = useState(initialMode === 'signup');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
-  const [section, setSection] = useState<'signin' | 'signup'>('signin');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
@@ -33,6 +33,12 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onLogin, onBack }) => {
     fullName: '',
     phoneNumber: ''
   });
+
+  useEffect(() => {
+    setIsSignUp(initialMode === 'signup');
+    setError(null);
+    setSuccess(null);
+  }, [initialMode]);
 
   // Calculate Password Strength
   const getPasswordStrength = (pass: string) => {

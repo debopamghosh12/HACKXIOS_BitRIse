@@ -360,47 +360,79 @@ export const getUserSubscriptions = async (patientId: string) => {
     // If the user changed column to med_id in medicines table, we need to handle that.
     // Based on user input, we should check `med_id` or `id`.
 
-    // Collect all medicine IDs
-    const medIds = subs.map(s => s.medicine_id).filter(Boolean);
+    // Collect numeric medicine IDs from subscriptions.
+    const medIds = subs
+      .map(s => Number(s.medicine_id))
+      .filter((id): id is number => Number.isFinite(id) && id > 0);
 
-    if (medIds.length === 0) return [];
+    let meds: any[] = [];
+    if (medIds.length > 0) {
+      // Try current schema first (med_id), then legacy (id) if needed.
+      const medIdQuery = await supabase
+        .from('medicines')
+        .select('*')
+        .in('med_id', medIds);
 
-    // Fetch medicines
-    // Note: User said medicines.id changed to medicines.med_id. 
-    // We try to fetch using the correct column.
-    const { data: meds, error: medsError } = await supabase
-      .from('medicines')
-      .select('*')
-      .in('med_id', medIds); // User said they changed id to med_id
+      if (medIdQuery.error) {
+        console.warn('med_id lookup failed, trying id lookup:', medIdQuery.error);
+      } else {
+        meds = medIdQuery.data || [];
+      }
 
-    if (medsError) {
-      console.error('Error fetching medicines details:', medsError);
-      // Fallback: try querying 'id' if 'med_id' fails (or handling error)
+      if (meds.length < medIds.length) {
+        const idQuery = await supabase
+          .from('medicines')
+          .select('*')
+          .in('id', medIds);
+
+        if (!idQuery.error && idQuery.data) {
+          const existing = new Set(meds.map(m => Number(m.med_id ?? m.id)));
+          const missingFromLegacy = idQuery.data.filter(m => !existing.has(Number(m.med_id ?? m.id)));
+          meds = [...meds, ...missingFromLegacy];
+        }
+      }
     }
 
-    const medicinesMap = new Map<number, any>((meds as any[] | null)?.map((m: any) => [m.med_id, m]) || []);
+    const medicinesMap = new Map<number, any>();
+    for (const med of meds) {
+      const key = Number(med.med_id ?? med.id);
+      if (Number.isFinite(key)) {
+        medicinesMap.set(key, med);
+      }
+    }
 
     // 3. Map back to frontend Medicine type
     const mappedMedicines: Medicine[] = subs.map(sub => {
-      const medDetails = medicinesMap.get(sub.medicine_id);
+      const medId = Number(sub.medicine_id);
+      const medDetails = medicinesMap.get(medId);
+      const resolvedName =
+        medDetails?.brand_name ||
+        medDetails?.name ||
+        sub?.medicine_name ||
+        sub?.medicine?.brand_name ||
+        (Number.isFinite(medId) ? `Medicine #${medId}` : 'Unknown Medicine');
+
+      const resolvedPack = medDetails?.net_qty || medDetails?.pack_size || '';
+      const resolvedPrice = Number(medDetails?.price ?? sub?.price ?? 0) || 0;
+
       return {
-        id: sub.medicine_id?.toString() || '',
-        name: medDetails?.brand_name || 'Unknown Medicine',
-        strength: medDetails?.net_qty || '', // Approximation
+        id: Number.isFinite(medId) ? medId.toString() : String(sub.medicine_id || ''),
+        name: resolvedName,
+        strength: resolvedPack, // Approximation
         frequency: sub.dosage_per_day === 1 ? 'Once daily' : sub.dosage_per_day === 2 ? 'Twice daily' : 'Custom',
         durationDays: 30, // Default or calculate from dates
         dosageQuantity: sub.quantity_per_order?.toString() || '1',
         status: 'In Stock',
         form: 'Tablet',
         mappedProduct: {
-          productName: medDetails?.brand_name || '',
+          productName: resolvedName,
           company: '',
-          pricePerUnit: medDetails?.price || 0,
-          packSize: medDetails?.net_qty || '',
+          pricePerUnit: resolvedPrice,
+          packSize: resolvedPack,
           inStock: true
         },
         issue_solved: medDetails?.issue_solved,
-        price: medDetails?.price,
+        price: resolvedPrice,
         interval: 30, // Default refill interval
         isPendingPurchase: false
       };

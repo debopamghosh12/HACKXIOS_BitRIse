@@ -23,6 +23,18 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updat
   }, 0);
   // Calculate consistent billing date
   const nextBillingDate = getNextRefillDate(new Date(), 30);
+  const getDisplayMedicineName = (med: any) => {
+    const primary = String(med?.name || '').trim();
+    if (primary && !/^unknown medicine$/i.test(primary)) return primary;
+
+    const product = String(med?.mappedProduct?.productName || '').trim();
+    if (product && !/^unknown medicine$/i.test(product)) return product;
+
+    const numericId = Number(med?.id);
+    if (Number.isFinite(numericId) && numericId > 0) return `Medicine #${numericId}`;
+
+    return 'Medicine';
+  };
   // ...
 
 
@@ -90,7 +102,7 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updat
                   <Clock className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="font-medium text-slate-800">{med.name}</p>
+                  <p className="font-medium text-slate-800">{getDisplayMedicineName(med)}</p>
                   <p className="text-xs text-slate-500">{med.strength} • {med.frequency}</p>
                 </div>
               </div>
@@ -132,7 +144,7 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updat
                   <span className="text-[10px] text-slate-400">Set time</span>
                 </div>
                 <div>
-                  <span className="font-medium text-slate-700">{med.name}</span>
+                  <span className="font-medium text-slate-700">{getDisplayMedicineName(med)}</span>
                   {state.routineCompletionLog?.[`${today}:${med.id}`] && (
                     <div className="mt-1 flex items-center gap-2">
                       <p className="text-xs text-green-600">
