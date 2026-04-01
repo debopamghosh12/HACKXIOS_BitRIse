@@ -29,7 +29,12 @@ const Header = ({ onStart }: { onStart: () => void }) => (
     </nav>
 
     <div className="flex items-center gap-4">
-      <button className="text-sm font-medium text-slate-600 hover:text-blue-600 hidden sm:block">Sign In</button>
+      <button
+        onClick={onStart}
+        className="text-sm font-medium text-slate-600 hover:text-blue-600 hidden sm:block"
+      >
+        Sign In
+      </button>
       <Button onClick={onStart} className="px-5 py-2 text-sm rounded-full bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20">
         Get Started
       </Button>
