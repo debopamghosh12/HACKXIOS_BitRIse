@@ -224,6 +224,11 @@ const App: React.FC = () => {
     };
 
     const handleAddRecommendation = (rec: any) => {
+        const parsedPrice = typeof rec.price === 'number'
+            ? rec.price
+            : parseFloat(String(rec.price).replace(/[^0-9.]/g, ''));
+        const safePrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
+
         const newMedicine: Medicine = {
             id: Math.random().toString(36).substr(2, 9),
             name: rec.name,
@@ -234,10 +239,11 @@ const App: React.FC = () => {
             dosageQuantity: '1',
             frequency: 'Once daily',
             durationDays: 30,
+            price: safePrice,
             mappedProduct: {
                 productName: rec.name,
                 company: 'Wellness Inc.',
-                pricePerUnit: parseFloat(rec.price.replace('$', '')) || 10,
+                pricePerUnit: safePrice,
                 packSize: '30 count',
                 inStock: true
             }
