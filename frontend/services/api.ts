@@ -20,6 +20,54 @@ const normalizeMedicine = (row: any) => ({
   price: Number(row?.price ?? 0)
 });
 
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  Immunity: ['immunity', 'immune', 'vitamin c', 'zinc', 'multivitamin', 'probiotic', 'd3'],
+  Sleep: ['sleep', 'melatonin', 'insomnia', 'calm', 'chamomile', 'magnesium'],
+  Energy: ['energy', 'b-complex', 'coq10', 'fatigue', 'iron', 'folate'],
+  Heart: ['heart', 'omega', 'cholesterol', 'cardio', 'bp', 'blood pressure'],
+  Hydration: ['hydration', 'electrolyte', 'ors', 'fluid', 'dehydration']
+};
+
+export const getMedicinesByCategory = async (
+  category: string,
+  searchQuery = '',
+  sortBy: 'asc' | 'desc' = 'asc'
+) => {
+  try {
+    let builder = supabase
+      .from('medicines')
+      .select('med_id, brand_name, issue_solved, net_qty, price')
+      .limit(250);
+
+    if (searchQuery.trim()) {
+      builder = builder.ilike('brand_name', `%${searchQuery.trim()}%`);
+    }
+
+    const { data, error } = await builder;
+    if (error) throw error;
+
+    const rows = (data || []).map(normalizeMedicine);
+    const keywords = CATEGORY_KEYWORDS[category] || [];
+
+    const filtered = rows.filter((row: any) => {
+      if (keywords.length === 0) return true;
+      const haystack = `${row.brand_name || ''} ${row.issue_solved || ''}`.toLowerCase();
+      return keywords.some((k) => haystack.includes(k));
+    });
+
+    const sorted = filtered.sort((a: any, b: any) => {
+      const pa = Number(a.price || 0);
+      const pb = Number(b.price || 0);
+      return sortBy === 'asc' ? pa - pb : pb - pa;
+    });
+
+    return sorted;
+  } catch (error) {
+    console.error('Category medicines fetch error:', error);
+    return [];
+  }
+};
+
 /**
  * Search medicines from database by brand name
  */

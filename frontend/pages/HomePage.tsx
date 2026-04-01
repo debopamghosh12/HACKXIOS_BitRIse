@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Moon, Droplet, Sun, Crown, Package, Activity, ArrowLeft } from 'lucide-react';
 import { AppState, RoutineItem } from '../types';
 import { WellnessWidget, PlanProgressWidget, DailyRoutineWidget } from '../components/HomeWidgets';
+import { getMedicinesByCategory } from '../services/api';
 
 interface HomePageProps {
   state: AppState;
@@ -19,6 +20,8 @@ export const HomePage: React.FC<HomePageProps> = ({ state, toggleMedicine, addRo
   const [selectedCategory, setSelectedCategory] = useState<CategoryName | null>(null);
   const [categorySearch, setCategorySearch] = useState('');
   const [sortByPrice, setSortByPrice] = useState<'asc' | 'desc'>('asc');
+  const [liveCategoryItems, setLiveCategoryItems] = useState<Array<{ id: number; name: string; desc: string; price: string; tag: string }>>([]);
+  const [isLoadingCategory, setIsLoadingCategory] = useState(false);
 
   const categories = [
     { name: 'Immunity' as CategoryName, icon: Crown, color: 'bg-blue-100 text-blue-600', pageBg: 'from-blue-50 to-sky-50', accent: 'text-blue-700' },
@@ -58,7 +61,7 @@ export const HomePage: React.FC<HomePageProps> = ({ state, toggleMedicine, addRo
 
   const activeCategoryConfig = categories.find((cat) => cat.name === selectedCategory) || null;
 
-  const categoryItems = useMemo(() => {
+  const staticCategoryItems = useMemo(() => {
     if (!selectedCategory) return [];
 
     const base = categoryMedicines[selectedCategory] || [];
@@ -73,6 +76,40 @@ export const HomePage: React.FC<HomePageProps> = ({ state, toggleMedicine, addRo
       return sortByPrice === 'asc' ? pa - pb : pb - pa;
     });
   }, [selectedCategory, categorySearch, sortByPrice]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadCategoryMedicines = async () => {
+      if (!selectedCategory) {
+        setLiveCategoryItems([]);
+        return;
+      }
+
+      setIsLoadingCategory(true);
+      const result = await getMedicinesByCategory(selectedCategory, categorySearch, sortByPrice);
+
+      if (!active) return;
+
+      const mapped = result.map((item: any) => ({
+        id: Number(item.med_id || item.id || Math.random()),
+        name: item.brand_name || 'Unknown Medicine',
+        desc: item.issue_solved || `${selectedCategory} support`,
+        price: `₹${Number(item.price || 0).toFixed(2)}`,
+        tag: selectedCategory
+      }));
+
+      setLiveCategoryItems(mapped);
+      setIsLoadingCategory(false);
+    };
+
+    loadCategoryMedicines();
+    return () => {
+      active = false;
+    };
+  }, [selectedCategory, categorySearch, sortByPrice]);
+
+  const categoryItems = liveCategoryItems.length > 0 ? liveCategoryItems : staticCategoryItems;
 
   const recommendations = [
     { id: 1, name: 'Daily Multi-Vitamin', desc: 'Essential nutrients for daily energy.', price: '₹1800.00', tag: 'Wellness', image: '/products/multivitamin.png' },
@@ -181,6 +218,11 @@ export const HomePage: React.FC<HomePageProps> = ({ state, toggleMedicine, addRo
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {isLoadingCategory && (
+                <div className="sm:col-span-2 lg:col-span-3 rounded-xl border border-blue-100 bg-white/80 p-4 text-sm text-slate-600">
+                  Loading medicines for {selectedCategory}...
+                </div>
+              )}
               {categoryItems.map((item) => (
                 <div key={item.id} className="rounded-2xl border border-white/70 bg-white/90 p-4 shadow-sm hover:shadow-md transition-all">
                   <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-2">{item.tag}</p>
