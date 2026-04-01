@@ -495,6 +495,9 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
 
   const handleSelectMedicine = (medicine: any) => {
     console.log('🔍 Medicine selected:', medicine);
+    console.log('🔍 Medicine price from API:', medicine.price);
+    console.log('🔍 Medicine price type:', typeof medicine.price);
+    console.log('🔍 Medicine all data:', JSON.stringify(medicine, null, 2));
     setSelectedMedicine(medicine);
     setSearchQuery(medicine.brand_name);
     setSearchResults([]);
@@ -517,8 +520,14 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
     const dosage_per_day = Math.ceil(interval / duration);
 
     const priceValue = selectedMedicine.price || 0;
-    console.log('💰 Final price to be stored:', priceValue);
+    console.log('💰 Final price to be stored (before):', priceValue);
+    console.log('💰 Price type:', typeof priceValue);
+    console.log('💰 Price is number?:', typeof priceValue === 'number');
     console.log('💰 Duration:', duration, 'Interval:', interval);
+
+    // Ensure price is a number
+    const numericPrice = parseFloat(priceValue as any) || 0;
+    console.log('💰 Final price as number:', numericPrice);
 
     const newMedicine: Medicine = {
       id: selectedMedicine.med_id?.toString() || selectedMedicine.id?.toString() || Math.random().toString(),
@@ -533,20 +542,25 @@ const MedicinesStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
       mappedProduct: {
         productName: selectedMedicine.brand_name,
         company: '',
-        pricePerUnit: priceValue,
+        pricePerUnit: numericPrice,
         packSize: selectedMedicine.net_qty || '',
         inStock: true,
       },
       // Store additional info
       issue_solved: selectedMedicine.issue_solved,
       net_qty: selectedMedicine.net_qty,
-      price: priceValue,
+      price: numericPrice,
       interval: interval,
     };
 
     console.log('✅ New medicine object created:', newMedicine);
     console.log('✅ Price stored in medicine object:', newMedicine.price);
-    updateState({ medicines: [...state.medicines, newMedicine] });
+    console.log('✅ MappedProduct pricePerUnit:', newMedicine.mappedProduct?.pricePerUnit);
+    
+    const updatedMedicines = [...state.medicines, newMedicine];
+    console.log('✅ Updated medicines array:', updatedMedicines);
+    
+    updateState({ medicines: updatedMedicines });
     console.log('✅ State updated with new medicine');
 
     // Reset form
@@ -802,6 +816,7 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
   const calculateTotalCost = () => {
     console.log('📊 === CALCULATING TOTAL COST (PLAN STEP) ===');
     console.log('📊 Total medicines in state:', state.medicines.length);
+    console.log('📊 Full medicines state:', JSON.stringify(state.medicines, null, 2));
     
     const total = state.medicines.reduce((total, med, index) => {
       // Try to get price from various sources
@@ -810,8 +825,8 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
       const price = priceFromMed || priceFromMapped || 0;
       
       console.log(`📊 Medicine ${index + 1}: ${med.name}`);
-      console.log(`   - med.price: ${priceFromMed}`);
-      console.log(`   - med.mappedProduct?.pricePerUnit: ${priceFromMapped}`);
+      console.log(`   - med.price: ${priceFromMed} (type: ${typeof priceFromMed})`);
+      console.log(`   - med.mappedProduct?.pricePerUnit: ${priceFromMapped} (type: ${typeof priceFromMapped})`);
       console.log(`   - Final price used: ${price}`);
       console.log(`   - Running total: ${total} + ${price} = ${total + (parseFloat(price as any) || 0)}`);
       
