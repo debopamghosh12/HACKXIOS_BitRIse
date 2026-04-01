@@ -9,13 +9,13 @@ interface SubscriptionPageProps {
   state: AppState;
   updateState?: (updates: Partial<AppState>) => void;
   toggleRoutineItem?: (id: string) => void;
+  setMedicineReminderTime?: (medicineId: string, time: string) => void;
   goToSearch: () => void;
 }
 
-export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updateState, toggleRoutineItem, goToSearch }) => {
+export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updateState, toggleRoutineItem, setMedicineReminderTime, goToSearch }) => {
   const hasPlan = state.selectedPlan !== null;
   const today = new Date().toISOString().split('T')[0];
-  const reminderTime = state.notificationSettings.refillReminderTime || '08:00';
   // Calculate consistent billing date
   const nextBillingDate = getNextRefillDate(new Date(), 30);
   // ...
@@ -112,15 +112,39 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updat
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {state.medicines.map((med) => (
-            <GlassCard key={med.id} className="p-4 flex items-center justify-between">
+            <GlassCard key={med.id} className="p-4 flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">{reminderTime}</div>
+                <div className="flex flex-col gap-1">
+                  <input
+                    type="time"
+                    value={state.medicineReminderTimes?.[med.id] || state.notificationSettings.refillReminderTime || '08:00'}
+                    onChange={(e) => setMedicineReminderTime && setMedicineReminderTime(med.id, e.target.value)}
+                    className="text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded border border-slate-200"
+                  />
+                  <span className="text-[10px] text-slate-400">Set time</span>
+                </div>
                 <div>
                   <span className="font-medium text-slate-700">{med.name}</span>
                   {state.routineCompletionLog?.[`${today}:${med.id}`] && (
-                    <p className="text-xs text-green-600 mt-1">
-                      Taken at {new Date(state.routineCompletionLog[`${today}:${med.id}`]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className="text-xs text-green-600">
+                        Taken at {new Date(state.routineCompletionLog[`${today}:${med.id}`]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      {(() => {
+                        const completionAt = new Date(state.routineCompletionLog[`${today}:${med.id}`]);
+                        const scheduled = state.medicineReminderTimes?.[med.id] || state.notificationSettings.refillReminderTime || '08:00';
+                        const [h, m] = scheduled.split(':').map(Number);
+                        const scheduledAt = new Date();
+                        scheduledAt.setHours(h || 0, m || 0, 0, 0);
+                        const diffMin = Math.round((completionAt.getTime() - scheduledAt.getTime()) / 60000);
+                        const isOnTime = Math.abs(diffMin) <= 30;
+                        return (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded border ${isOnTime ? 'text-green-700 bg-green-50 border-green-200' : 'text-amber-700 bg-amber-50 border-amber-200'}`}>
+                            {isOnTime ? 'On time' : 'Late'}
+                          </span>
+                        );
+                      })()}
+                    </div>
                   )}
                 </div>
               </div>

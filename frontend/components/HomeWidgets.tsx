@@ -253,7 +253,7 @@ export const DailyRoutineWidget: React.FC<{
       const subscriptionMeds: RoutineItem[] = state.medicines.map(med => ({
          id: med.id,
          title: med.name,
-         time: reminderTime,
+         time: state.medicineReminderTimes?.[med.id] || reminderTime,
          type: (med.form as RoutineItem['type']) || 'Tablet'
       }));
 

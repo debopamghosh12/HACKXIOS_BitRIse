@@ -410,6 +410,15 @@ const App: React.FC = () => {
         });
     };
 
+    const setMedicineReminderTime = (medicineId: string, time: string) => {
+        updateState({
+            medicineReminderTimes: {
+                ...state.medicineReminderTimes,
+                [medicineId]: time,
+            }
+        });
+    };
+
     useEffect(() => {
         if (state.step !== 'app') return;
         if (!state.notificationSettings.pushEnabled) return;
@@ -418,30 +427,31 @@ const App: React.FC = () => {
         const timer = setInterval(() => {
             const now = new Date();
             const currentTime = now.toTimeString().slice(0, 5);
-            const reminderTime = state.notificationSettings.refillReminderTime;
+            const today = now.toISOString().split('T')[0];
 
-            if (currentTime !== reminderTime) return;
+            const dueMeds = state.medicines.filter((med) => {
+                const medicineTime = state.medicineReminderTimes?.[med.id] || state.notificationSettings.refillReminderTime;
+                const alreadyTaken = state.completedRoutineIds.includes(`${today}:${med.id}`);
+                return medicineTime === currentTime && !alreadyTaken;
+            });
 
-            const minuteKey = `${now.toISOString().split('T')[0]}:${currentTime}`;
+            if (dueMeds.length === 0) return;
+
+            const minuteKey = `${today}:${currentTime}:${dueMeds.map(m => m.id).join(',')}`;
             if (lastNotifiedMinuteRef.current === minuteKey) return;
 
-            const today = now.toISOString().split('T')[0];
-            const pendingMeds = state.medicines.filter((med) => !state.completedRoutineIds.includes(`${today}:${med.id}`));
-
-            if (pendingMeds.length > 0) {
-                const names = pendingMeds.slice(0, 2).map((m) => m.name).join(', ');
-                const suffix = pendingMeds.length > 2 ? ` +${pendingMeds.length - 2} more` : '';
-                new Notification('Medicine Reminder', {
-                    body: `It's ${reminderTime}. Time to take: ${names}${suffix}`,
-                    icon: '/favicon.ico'
-                });
-            }
+            const names = dueMeds.slice(0, 2).map((m) => m.name).join(', ');
+            const suffix = dueMeds.length > 2 ? ` +${dueMeds.length - 2} more` : '';
+            new Notification('Medicine Reminder', {
+                body: `It's ${currentTime}. Time to take: ${names}${suffix}`,
+                icon: '/favicon.ico'
+            });
 
             lastNotifiedMinuteRef.current = minuteKey;
         }, 30000);
 
         return () => clearInterval(timer);
-    }, [state.step, state.notificationSettings.pushEnabled, state.notificationSettings.refillReminderTime, state.medicines, state.completedRoutineIds]);
+    }, [state.step, state.notificationSettings.pushEnabled, state.notificationSettings.refillReminderTime, state.medicines, state.completedRoutineIds, state.medicineReminderTimes]);
 
     // Show loading screen while checking session
     if (isCheckingSession) {
@@ -682,6 +692,7 @@ const App: React.FC = () => {
                                     state={state}
                                     updateState={updateState}
                                     toggleRoutineItem={toggleRoutineItem}
+                                    setMedicineReminderTime={setMedicineReminderTime}
                                     goToSearch={() => handleTabChange('search')}
                                 />
                             )}

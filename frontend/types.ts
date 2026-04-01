@@ -79,6 +79,7 @@ export interface AppState {
   selectedPlan: SubscriptionPlan | null;
   paymentStatus: 'idle' | 'processing' | 'success' | 'error';
   notificationSettings: NotificationSettings;
+  medicineReminderTimes: Record<string, string>; // medicineId -> HH:mm
   takenMeds: string[]; // Keep for backward compatibility if needed, or remove later
   routineItems: RoutineItem[];
   completedRoutineIds: string[];
@@ -115,6 +116,7 @@ export const INITIAL_STATE: AppState = {
     refillReminderDays: 3,
     refillReminderTime: '09:00',
   },
+  medicineReminderTimes: {},
   takenMeds: [],
   routineItems: [],
   completedRoutineIds: [],
