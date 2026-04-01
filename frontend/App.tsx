@@ -11,6 +11,8 @@ import { Dashboard } from './pages/Dashboard';
 import { SettingsPage } from './pages/SettingsPage';
 import { Stepper } from './components/UI';
 
+const APP_STATE_STORAGE_KEY = 'sanvix_app_state_v1';
+
 const App: React.FC = () => {
     const [state, setState] = useState<AppState>(INITIAL_STATE);
     const [isCheckingSession, setIsCheckingSession] = useState(true);
@@ -58,41 +60,74 @@ const App: React.FC = () => {
                         }
                     }
 
-                    // Auto-login the user
-                    updateState({
+                    const mappedProfiles = profiles?.map(p => ({
+                        ...p,
+                        id: p.patient_id,
+                        patientId: p.patient_id,
+                        ownerId: p.owner_id,
+                        fullName: p.full_name,
+                        dateOfBirth: p.date_of_birth,
+                        bloodGroup: p.blood_group,
+                        chronicDiseases: p.chronic_diseases,
+                    })) || [];
+
+                    const baseAutoState: Partial<AppState> = {
                         step: 'app',
                         activeTab: 'home',
                         medicines: fetchedMedicines,
                         selectedPlan: activePlan,
-                        profiles: profiles?.map(p => ({
-                            ...p,
-                            id: p.patient_id, // Map DB generic ID to frontend ID
-                            patientId: p.patient_id,
-                            ownerId: p.owner_id,
-                            fullName: p.full_name,
-                            dateOfBirth: p.date_of_birth,
-                            bloodGroup: p.blood_group,
-                            chronicDiseases: p.chronic_diseases,
-                        })) || [],
+                        profiles: mappedProfiles,
                         patient: {
                             fullName: activeProfile?.full_name || '',
                             email: session.user.email || '',
                             phone: activeProfile?.phone || '',
-
-                            // Actually handleLogin sets id: activeProfile.patient_id. Let's match that.
-                            // WAIT: In handleLogin (line 182), id is set to activeProfile.patient_id.
-                            // In old useEffect (line 67), id was session.user.id. This is a mismatch!
-                            // I should match handleLogin: id = activeProfile.patient_id
-
-                            // Fix: Match handleLogin logic exactly
                             id: activeProfile?.patient_id || '',
                             patientId: activeProfile?.patient_id,
+                            ownerId: session.user.id,
                             dateOfBirth: activeProfile?.date_of_birth,
                             gender: activeProfile?.gender,
                             bloodGroup: activeProfile?.blood_group,
                             allergies: activeProfile?.allergies || [],
                             chronicDiseases: activeProfile?.chronic_diseases || []
                         }
+                    };
+
+                    // Restore local draft/progress state (per user) after refresh.
+                    let restoredState: Partial<AppState> = {};
+                    try {
+                        const persistedRaw = localStorage.getItem(APP_STATE_STORAGE_KEY);
+                        if (persistedRaw) {
+                            const persisted = JSON.parse(persistedRaw) as AppState;
+                            if (persisted?.patient?.ownerId === session.user.id) {
+                                restoredState = {
+                                    activeTab: persisted.activeTab,
+                                    wizardStep: persisted.wizardStep,
+                                    diagnosis: persisted.diagnosis,
+                                    medicines: persisted.medicines,
+                                    selectedPlan: persisted.selectedPlan,
+                                    notificationSettings: persisted.notificationSettings,
+                                    takenMeds: persisted.takenMeds,
+                                    routineItems: persisted.routineItems,
+                                    completedRoutineIds: persisted.completedRoutineIds,
+                                    paymentStatus: persisted.paymentStatus === 'processing' ? 'idle' : persisted.paymentStatus,
+                                    patient: {
+                                        ...baseAutoState.patient,
+                                        ...persisted.patient,
+                                        ownerId: session.user.id,
+                                    }
+                                };
+                            }
+                        }
+                    } catch (persistErr) {
+                        console.warn('Could not restore persisted app state:', persistErr);
+                    }
+
+                    // Auto-login the user
+                    updateState({
+                        ...baseAutoState,
+                        ...restoredState,
+                        step: 'app',
+                        profiles: mappedProfiles,
                     });
 
                     console.log('✅ Auto-login successful!');
@@ -108,6 +143,22 @@ const App: React.FC = () => {
 
         checkSession();
     }, []); // Empty dependency array - only run once on mount
+
+    // Persist authenticated app progress so refresh doesn't reset wizard/tab/medicines.
+    useEffect(() => {
+        if (state.step !== 'app' || !state.patient?.ownerId) return;
+
+        const persistableState: AppState = {
+            ...state,
+            paymentStatus: state.paymentStatus === 'processing' ? 'idle' : state.paymentStatus,
+        };
+
+        try {
+            localStorage.setItem(APP_STATE_STORAGE_KEY, JSON.stringify(persistableState));
+        } catch (err) {
+            console.warn('Could not persist app state:', err);
+        }
+    }, [state]);
 
 
 
@@ -260,6 +311,8 @@ const App: React.FC = () => {
         try {
             const { supabase } = await import('./services/supabase');
             await supabase.auth.signOut();
+
+            localStorage.removeItem(APP_STATE_STORAGE_KEY);
 
             // Reset state to initial
             setState(INITIAL_STATE);
