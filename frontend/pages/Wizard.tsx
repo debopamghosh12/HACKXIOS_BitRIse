@@ -913,6 +913,7 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard, prevStep }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showRazorpayNotice, setShowRazorpayNotice] = useState(false);
   const [cardNumber, setCardNumber] = useState('');
   const [expiry, setExpiry] = useState('');
   const [cvc, setCvc] = useState('');
@@ -1130,10 +1131,20 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
             <div className="border border-blue-500 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium flex items-center">
               <CreditCard className="w-4 h-4 mr-2" /> Card
             </div>
-            <div className="border border-slate-200 text-slate-500 px-4 py-2 rounded-lg text-sm font-medium flex items-center">
-              Apple Pay
-            </div>
+            <button
+              type="button"
+              onClick={() => setShowRazorpayNotice(true)}
+              className="border border-slate-200 text-slate-500 px-4 py-2 rounded-lg text-sm font-medium flex items-center hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+            >
+              Razorpay
+            </button>
           </div>
+
+          {showRazorpayNotice && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-700 font-medium">Razorpay Payment interface will be integrated soon.</p>
+            </div>
+          )}
 
           <div className="space-y-4">
             <Input
