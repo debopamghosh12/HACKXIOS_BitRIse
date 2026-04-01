@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import {
   User, Mail, Phone, FileText, Upload, Plus, Trash2, Calendar,
@@ -389,6 +389,125 @@ const PatientStep: React.FC<WizardProps> = ({ state, updateState, nextStep, refr
 
 // 2. Diagnosis Step
 const DiagnosisStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevStep }) => {
+  const [isOcrProcessing, setIsOcrProcessing] = useState(false);
+  const [ocrText, setOcrText] = useState('');
+  const [detectedMedicines, setDetectedMedicines] = useState<any[]>([]);
+  const [ocrError, setOcrError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const mapDetectedMedicineToAppMedicine = (medicine: any): Medicine => {
+    const numericPrice = Number(medicine.price || 0);
+    return {
+      id: String(medicine.med_id ?? medicine.id ?? Math.random().toString()),
+      name: medicine.brand_name || medicine.name || 'Detected Medicine',
+      company: '',
+      status: 'In Stock',
+      form: 'Tablet',
+      strength: medicine.net_qty || 'N/A',
+      dosageQuantity: '1',
+      frequency: 'Once daily',
+      durationDays: 30,
+      mappedProduct: {
+        productName: medicine.brand_name || medicine.name || 'Detected Medicine',
+        company: '',
+        pricePerUnit: numericPrice,
+        packSize: medicine.net_qty || '',
+        inStock: true,
+      },
+      issue_solved: medicine.issue_solved || '',
+      net_qty: medicine.net_qty || '',
+      price: numericPrice,
+      interval: 30,
+      isPendingPurchase: true,
+    };
+  };
+
+  const detectMedicinesFromText = async (text: string) => {
+    const lines = text
+      .split(/\r?\n/)
+      .map((line) => line.replace(/[^a-zA-Z0-9\s\-+]/g, ' ').replace(/\s+/g, ' ').trim())
+      .filter((line) => line.length >= 3)
+      .slice(0, 12);
+
+    const found: any[] = [];
+
+    for (const line of lines) {
+      try {
+        const result = await searchMedicines(line);
+        if (!result?.medicines?.length) continue;
+
+        const best = result.medicines[0];
+        const bestId = String(best?.id ?? best?.med_id ?? '');
+        if (!bestId) continue;
+
+        const alreadyAdded = found.some((m) => String(m.id ?? m.med_id) === bestId);
+        if (!alreadyAdded) found.push(best);
+      } catch (err) {
+        console.error('Medicine detect error for line:', line, err);
+      }
+    }
+
+    return found;
+  };
+
+  const handlePrescriptionUpload = async (file: File) => {
+    setOcrError(null);
+    setDetectedMedicines([]);
+    setOcrText('');
+
+    if (!file) return;
+
+    setIsOcrProcessing(true);
+    try {
+      const { recognize } = await import('tesseract.js');
+      const result = await recognize(file, 'eng');
+      const extractedText = (result?.data?.text || '').trim();
+
+      if (!extractedText) {
+        setOcrError('No readable text found in prescription. Try a clearer image.');
+        return;
+      }
+
+      setOcrText(extractedText);
+      updateState({
+        diagnosis: {
+          ...state.diagnosis,
+          prescriptionFile: file,
+          notes: state.diagnosis.notes || extractedText.slice(0, 400)
+        }
+      });
+
+      const detected = await detectMedicinesFromText(extractedText);
+      setDetectedMedicines(detected);
+
+      if (detected.length === 0) {
+        setOcrError('Text was extracted, but no medicine match found. Try search in next step.');
+      }
+    } catch (err: any) {
+      console.error('OCR error:', err);
+      setOcrError(err?.message || 'Failed to scan prescription.');
+    } finally {
+      setIsOcrProcessing(false);
+    }
+  };
+
+  const addDetectedMedicine = (medicine: any) => {
+    const mapped = mapDetectedMedicineToAppMedicine(medicine);
+    const exists = state.medicines.some((m) => m.id === mapped.id);
+    if (exists) return;
+    updateState({ medicines: [...state.medicines, mapped] });
+  };
+
+  const addAllDetectedMedicines = () => {
+    const existingIds = new Set(state.medicines.map((m) => m.id));
+    const mapped = detectedMedicines
+      .map(mapDetectedMedicineToAppMedicine)
+      .filter((m) => !existingIds.has(m.id));
+
+    if (mapped.length === 0) return;
+    updateState({ medicines: [...state.medicines, ...mapped] });
+  };
+
   return (
     <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-2xl mx-auto">
       <div className="grid md:grid-cols-3 gap-6">
@@ -433,12 +552,76 @@ const DiagnosisStep: React.FC<WizardProps> = ({ state, updateState, nextStep, pr
               />
             </div>
 
-            <div className="mt-6 p-6 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center hover:border-blue-300 transition-colors cursor-pointer bg-white/30">
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-6 p-6 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-center hover:border-blue-300 transition-colors cursor-pointer bg-white/30"
+            >
               <Upload className="w-8 h-8 text-slate-400 mb-2" />
               <p className="text-sm text-slate-600 font-medium">Upload Prescription</p>
-              <p className="text-xs text-slate-400 mt-1">Drag & drop or click to browse</p>
-              <input type="file" className="hidden" />
+              <p className="text-xs text-slate-400 mt-1">Click to browse and auto-detect medicines using OCR</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.pdf"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handlePrescriptionUpload(file);
+                }}
+              />
             </div>
+
+            {isOcrProcessing && (
+              <div className="rounded-xl bg-blue-50 border border-blue-100 p-3 text-sm text-blue-700">
+                Scanning prescription with OCR... please wait.
+              </div>
+            )}
+
+            {ocrError && (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-700">
+                {ocrError}
+              </div>
+            )}
+
+            {ocrText && (
+              <div className="rounded-xl border border-slate-200 bg-white/60 p-3">
+                <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Extracted Text</p>
+                <p className="text-xs text-slate-600 max-h-24 overflow-y-auto whitespace-pre-wrap">{ocrText}</p>
+              </div>
+            )}
+
+            {detectedMedicines.length > 0 && (
+              <div className="rounded-xl border border-green-200 bg-green-50/70 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-green-700 uppercase tracking-wide">Detected Medicines</p>
+                  <button
+                    onClick={addAllDetectedMedicines}
+                    className="text-xs font-semibold text-green-700 hover:text-green-800 underline"
+                  >
+                    Add all
+                  </button>
+                </div>
+                {detectedMedicines.map((med) => {
+                  const medId = String(med.id ?? med.med_id ?? '');
+                  const alreadyAdded = state.medicines.some((m) => m.id === medId);
+                  return (
+                    <div key={medId} className="flex items-center justify-between bg-white/70 rounded-lg px-3 py-2 border border-green-100">
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">{med.brand_name}</p>
+                        <p className="text-xs text-slate-500">₹{Number(med.price || 0).toFixed(2)}</p>
+                      </div>
+                      <button
+                        disabled={alreadyAdded}
+                        onClick={() => addDetectedMedicine(med)}
+                        className={`text-xs font-semibold px-2 py-1 rounded ${alreadyAdded ? 'bg-slate-100 text-slate-400' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+                      >
+                        {alreadyAdded ? 'Added' : 'Add'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             <p className="flex items-center text-xs text-slate-400 mt-2">
               <ShieldCheck className="w-3 h-3 mr-1" />
