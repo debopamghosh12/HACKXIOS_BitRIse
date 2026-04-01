@@ -788,16 +788,28 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
     { id: 'p3', name: 'Quarterly Saver', billingInterval: 'Quarterly', discountPercentage: 25, description: 'Best value. Refills every 90 days.' },
   ];
 
+  // Calculate total medicine cost
+  const calculateTotalCost = () => {
+    return state.medicines.reduce((total, med) => {
+      const price = med.price || 0;
+      return total + price;
+    }, 0);
+  };
+
+  const totalMedicineCost = calculateTotalCost();
+
   return (
     <motion.div variants={fadeVariants} initial="hidden" animate="visible" exit="exit" className="w-full max-w-4xl mx-auto">
       <div className="text-center mb-10">
         <h2 className="text-3xl font-light text-slate-800">Choose your plan</h2>
         <p className="text-slate-500 font-light mt-2">Flexible options designed for adherence.</p>
+        <p className="text-slate-400 text-sm mt-2">TOTAL MEDICINE VALUE: ₹{totalMedicineCost.toFixed(2)}</p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
         {plans.map(plan => {
           const isSelected = state.selectedPlan?.id === plan.id;
+          const discountedPrice = totalMedicineCost * (1 - plan.discountPercentage / 100);
           return (
             <div
               key={plan.id}
@@ -819,7 +831,7 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 
               <div className="my-6">
                 <span className="text-3xl font-light text-slate-900">
-                  ${(50 * (1 - plan.discountPercentage / 100)).toFixed(0)}
+                  ₹{discountedPrice.toFixed(2)}
                 </span>
                 <span className="text-slate-400 text-sm"> / shipment</span>
               </div>
@@ -853,6 +865,17 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard, prevStep }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Calculate total medicine cost
+  const calculateTotalCost = () => {
+    return state.medicines.reduce((total, med) => {
+      const price = med.price || 0;
+      return total + price;
+    }, 0);
+  };
+
+  const totalMedicineCost = calculateTotalCost();
+  const discountedAmount = totalMedicineCost * (1 - (state.selectedPlan?.discountPercentage || 0) / 100);
 
   const handlePay = async () => {
     console.log('=== Payment Debug Info ===');
@@ -898,7 +921,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
 
       // Step 2: Process payment and save to Supabase
       console.log('Processing payment...');
-      const totalAmount = 50 * (1 - (state.selectedPlan.discountPercentage || 0) / 100);
+      const totalAmount = discountedAmount;
       const paymentResult = await processPayment(
         state.patient.patientId!,  // Use generated patient UUID
         subscriptionIds,
@@ -953,13 +976,13 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
           {state.medicines.map(m => (
             <div key={m.id} className="flex justify-between text-sm">
               <span className="text-slate-700">{m.name} <span className="text-slate-400">x {m.durationDays} days</span></span>
-              <span className="font-medium text-slate-900">$15.00</span>
+              <span className="font-medium text-slate-900">₹{(m.price || 0).toFixed(2)}</span>
             </div>
           ))}
           <div className="h-px bg-slate-200 my-2" />
           <div className="flex justify-between text-base font-medium">
             <span>Total due today</span>
-            <span>${(50 * (1 - (state.selectedPlan?.discountPercentage || 0) / 100)).toFixed(2)}</span>
+            <span>₹{discountedAmount.toFixed(2)}</span>
           </div>
           <div className="bg-blue-50 p-3 rounded-lg text-xs text-blue-700 mt-2">
             Plan: {state.selectedPlan?.name} ({state.selectedPlan?.billingInterval})
