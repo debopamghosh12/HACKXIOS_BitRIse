@@ -16,6 +16,11 @@ interface SubscriptionPageProps {
 export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updateState, toggleRoutineItem, setMedicineReminderTime, goToSearch }) => {
   const hasPlan = state.selectedPlan !== null;
   const today = new Date().toISOString().split('T')[0];
+  const subscribedMedicines = state.medicines.filter((med) => !med.isPendingPurchase);
+  const totalRefillAmount = subscribedMedicines.reduce((sum, med) => {
+    const price = Number(med.price ?? med.mappedProduct?.pricePerUnit ?? 0);
+    return sum + (Number.isFinite(price) ? price : 0);
+  }, 0);
   // Calculate consistent billing date
   const nextBillingDate = getNextRefillDate(new Date(), 30);
   // ...
@@ -68,6 +73,9 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updat
             <p className="text-lg font-semibold text-slate-800">
               {nextBillingDate}
             </p>
+            <p className="text-sm text-slate-500 mt-1">
+              Total refill amount: <span className="font-semibold text-slate-700">₹{totalRefillAmount.toFixed(2)}</span>
+            </p>
           </div>
         </div>
 
@@ -75,7 +83,7 @@ export const SubscriptionPage: React.FC<SubscriptionPageProps> = ({ state, updat
 
         <div className="space-y-4">
           <h4 className="text-sm font-medium text-slate-500 uppercase tracking-widest">Medicines in this plan</h4>
-          {state.medicines.map((med) => (
+          {subscribedMedicines.map((med) => (
             <div key={med.id} className="flex items-center justify-between p-3 rounded-xl bg-white/50 border border-white/60">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
