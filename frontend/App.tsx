@@ -285,13 +285,18 @@ const App: React.FC = () => {
     };
 
     const handleAddRecommendation = (rec: any) => {
+        const numericId = Number(rec.med_id ?? rec.id);
+        const normalizedMedicineId = Number.isFinite(numericId) && numericId > 0
+            ? String(Math.trunc(numericId))
+            : Math.random().toString(36).substr(2, 9);
+
         const parsedPrice = typeof rec.price === 'number'
             ? rec.price
             : parseFloat(String(rec.price).replace(/[^0-9.]/g, ''));
         const safePrice = Number.isFinite(parsedPrice) ? parsedPrice : 0;
 
         const newMedicine: Medicine = {
-            id: String(rec.id ?? rec.med_id ?? Math.random().toString(36).substr(2, 9)),
+            id: normalizedMedicineId,
             name: rec.name,
             company: 'Wellness Inc.',
             status: 'In Stock',

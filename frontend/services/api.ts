@@ -138,27 +138,64 @@ export const createSubscriptions = async (
   medicines: Medicine[],
   plan: SubscriptionPlan
 ) => {
-  const subscriptionsData = medicines.map(medicine => {
-    // Calculate dates
-    const startDate = new Date().toISOString().split('T')[0];
-    const nextRefillDate = new Date();
-    nextRefillDate.setDate(nextRefillDate.getDate() + (medicine.interval || 30));
+  let subscriptionsData: Array<{
+    patient_id: string;
+    medicine_id: number;
+    quantity_per_order: number;
+    dosage_per_day: number;
+    start_date: string;
+    next_refill_date: string;
+    status: string;
+  }> = [];
 
-    return {
-      patient_id: patientId,
-      medicine_id: parseInt(medicine.id),
-      quantity_per_order: parseInt(medicine.dosageQuantity) || 1,
-      dosage_per_day: medicine.frequency === 'Once daily' ? 1 :
-        medicine.frequency === 'Twice daily' ? 2 :
-          medicine.frequency === 'Thrice daily' ? 3 : 1,
-      start_date: startDate,
-      next_refill_date: nextRefillDate.toISOString().split('T')[0],
-      status: 'active'
-    };
-  });
+  const resolveMedicineId = async (medicine: Medicine): Promise<number> => {
+    const directId = Number(medicine.id);
+    if (Number.isFinite(directId) && directId > 0) {
+      return Math.trunc(directId);
+    }
+
+    const possibleName = (medicine.name || medicine.mappedProduct?.productName || '').trim();
+    if (possibleName) {
+      const { data, error } = await supabase
+        .from('medicines')
+        .select('med_id, id, brand_name')
+        .ilike('brand_name', possibleName)
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        const found = data[0] as any;
+        const resolved = Number(found.med_id ?? found.id);
+        if (Number.isFinite(resolved) && resolved > 0) {
+          return Math.trunc(resolved);
+        }
+      }
+    }
+
+    throw new Error(`Could not map medicine ID for \"${medicine.name || 'Unnamed medicine'}\". Please re-add from search results.`);
+  };
 
   try {
     console.log('Creating subscriptions for patient:', patientId);
+
+    subscriptionsData = await Promise.all(medicines.map(async (medicine) => {
+      // Calculate dates
+      const startDate = new Date().toISOString().split('T')[0];
+      const nextRefillDate = new Date();
+      nextRefillDate.setDate(nextRefillDate.getDate() + (medicine.interval || 30));
+      const resolvedMedicineId = await resolveMedicineId(medicine);
+
+      return {
+        patient_id: patientId,
+        medicine_id: resolvedMedicineId,
+        quantity_per_order: parseInt(medicine.dosageQuantity) || 1,
+        dosage_per_day: medicine.frequency === 'Once daily' ? 1 :
+          medicine.frequency === 'Twice daily' ? 2 :
+            medicine.frequency === 'Thrice daily' ? 3 : 1,
+        start_date: startDate,
+        next_refill_date: nextRefillDate.toISOString().split('T')[0],
+        status: 'active'
+      };
+    }));
 
     const { data, error } = await supabase
       .from('subscriptions')
@@ -402,15 +439,38 @@ export const getUserSubscriptions = async (patientId: string) => {
     }
 
     // 3. Map back to frontend Medicine type
+    let routineNames: string[] = [];
+    try {
+      const { data: routines } = await supabase
+        .from('routines')
+        .select('medicine_name, created_at')
+        .eq('patient_id', patientId)
+        .order('created_at', { ascending: true });
+
+      routineNames = (routines || [])
+        .map((r: any) => String(r.medicine_name || '').trim())
+        .filter((name: string) => !!name);
+    } catch (routineErr) {
+      console.warn('Could not fetch routine-based medicine name fallbacks:', routineErr);
+    }
+
+    let routineFallbackIdx = 0;
+
     const mappedMedicines: Medicine[] = subs.map(sub => {
       const medId = Number(sub.medicine_id);
       const medDetails = medicinesMap.get(medId);
+      const routineFallbackName = routineNames[routineFallbackIdx] || '';
+      if ((!Number.isFinite(medId) || medId <= 0) && routineFallbackName) {
+        routineFallbackIdx += 1;
+      }
+
       const resolvedName =
         medDetails?.brand_name ||
         medDetails?.name ||
         sub?.medicine_name ||
         sub?.medicine?.brand_name ||
-        (Number.isFinite(medId) ? `Medicine #${medId}` : 'Unknown Medicine');
+        routineFallbackName ||
+        ((Number.isFinite(medId) && medId > 0) ? `Medicine #${medId}` : 'Medicine');
 
       const resolvedPack = medDetails?.net_qty || medDetails?.pack_size || '';
       const resolvedPrice = Number(medDetails?.price ?? sub?.price ?? 0) || 0;
