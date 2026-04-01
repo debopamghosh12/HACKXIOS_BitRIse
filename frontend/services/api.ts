@@ -28,6 +28,10 @@ export const searchMedicines = async (query: string) => {
 
     console.log('Response status:', response.status);
 
+    if (!response.ok) {
+      throw new Error(`Search API failed with status ${response.status}`);
+    }
+
     const data = await response.json();
     console.log('Search results:', data);
 
@@ -39,8 +43,33 @@ export const searchMedicines = async (query: string) => {
     }
     return null;
   } catch (error) {
-    console.error('Medicine search error:', error);
-    return null;
+    console.error('Medicine search API error, trying Supabase fallback:', error);
+
+    try {
+      const { data, error: supabaseError } = await supabase
+        .from('medicines')
+        .select('id, brand_name, issue_solved, net_qty, price')
+        .ilike('brand_name', `%${query}%`)
+        .limit(20);
+
+      if (supabaseError) {
+        console.error('Supabase medicine search error:', supabaseError);
+        return null;
+      }
+
+      if (data && data.length > 0) {
+        console.log('Supabase fallback search results:', data);
+        return {
+          medicines: data,
+          count: data.length
+        };
+      }
+
+      return null;
+    } catch (fallbackError) {
+      console.error('Medicine search fallback failed:', fallbackError);
+      return null;
+    }
   }
 };
 
