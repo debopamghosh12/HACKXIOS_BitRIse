@@ -302,6 +302,41 @@ export const processPayment = async (
 };
 
 /**
+ * Quick buy payment for direct purchases (without creating subscriptions)
+ */
+export const processQuickBuyPayment = async (
+  patientId: string,
+  amount: number
+) => {
+  try {
+    const transactionId = `QBUY_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+    const { data, error } = await supabase
+      .from('payments')
+      .insert({
+        patient_id: patientId,
+        subscription_id: null,
+        amount,
+        transaction_id: transactionId,
+        status: 'completed'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      transactionId,
+      payment: data
+    };
+  } catch (error) {
+    console.error('Quick buy payment error:', error);
+    throw error;
+  }
+};
+
+/**
  * Get user subscriptions with medicine details
  */
 export const getUserSubscriptions = async (patientId: string) => {

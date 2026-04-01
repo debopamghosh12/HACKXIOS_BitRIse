@@ -1,6 +1,6 @@
 export type Step = 'landing' | 'auth' | 'app';
 export type WizardStep = 'patient' | 'diagnosis' | 'medicines' | 'plan' | 'payment' | 'confirmation';
-export type ActiveTab = 'home' | 'search' | 'subscription' | 'settings';
+export type ActiveTab = 'home' | 'search' | 'quickbuy' | 'subscription' | 'settings';
 
 export interface Patient {
   id?: string; // The Profille ID (PK: patient_id) - kept as 'id' for frontend compatibility or standard

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Pill, Home, Search, Package, Settings, LogOut, User, Plus, Check, Users } from 'lucide-react';
+import { Pill, Home, Search, Package, Settings, LogOut, User, Plus, Check, Users, ShoppingBag } from 'lucide-react';
 import { AppState, INITIAL_STATE, Step, WizardStep, ActiveTab, Medicine, RoutineItem } from './types';
 import { Wizard } from './pages/Wizard';
 import { SubscriptionPage } from './pages/SubscriptionPage';
@@ -9,6 +9,7 @@ import { AuthPage } from './pages/AuthPage';
 import { HomePage } from './pages/HomePage';
 import { Dashboard } from './pages/Dashboard';
 import { SettingsPage } from './pages/SettingsPage';
+import { QuickBuyPage } from './pages/QuickBuyPage';
 import { Stepper } from './components/UI';
 
 const APP_STATE_STORAGE_KEY = 'sanvix_app_state_v1';
@@ -438,7 +439,7 @@ const App: React.FC = () => {
 
                     {/* Desktop Center Nav */}
                     <div className="hidden md:flex items-center bg-white/50 rounded-full p-1 border border-white/50 shadow-sm backdrop-blur-xl">
-                        {(['home', 'search', 'subscription', 'settings'] as ActiveTab[]).map((tab) => (
+                        {(['home', 'search', 'quickbuy', 'subscription', 'settings'] as ActiveTab[]).map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => handleTabChange(tab)}
@@ -623,6 +624,10 @@ const App: React.FC = () => {
                                 </div>
                             )}
 
+                            {state.activeTab === 'quickbuy' && (
+                                <QuickBuyPage state={state} />
+                            )}
+
                             {state.activeTab === 'subscription' && (
                                 <SubscriptionPage
                                     state={state}
@@ -647,8 +652,8 @@ const App: React.FC = () => {
             {/* Mobile Bottom Nav */}
             {state.step === 'app' && (
                 <div className="md:hidden fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-slate-200 py-3 px-6 flex justify-between items-center z-50">
-                    {(['home', 'search', 'subscription', 'settings'] as ActiveTab[]).map((tab) => {
-                        const Icon = tab === 'home' ? Home : tab === 'search' ? Search : tab === 'subscription' ? Package : Settings;
+                    {(['home', 'search', 'quickbuy', 'subscription', 'settings'] as ActiveTab[]).map((tab) => {
+                        const Icon = tab === 'home' ? Home : tab === 'search' ? Search : tab === 'quickbuy' ? ShoppingBag : tab === 'subscription' ? Package : Settings;
                         return (
                             <button
                                 key={tab}
@@ -656,7 +661,7 @@ const App: React.FC = () => {
                                 className={`flex flex-col items-center gap-1 transition-colors ${state.activeTab === tab ? 'text-primary-600' : 'text-slate-400'}`}
                             >
                                 <Icon className="w-6 h-6" strokeWidth={state.activeTab === tab ? 2.5 : 2} />
-                                <span className="text-[10px] font-medium uppercase tracking-wider">{tab.slice(0, 4)}</span>
+                                <span className="text-[10px] font-medium uppercase tracking-wider">{tab === 'quickbuy' ? 'quick' : tab.slice(0, 4)}</span>
                             </button>
                         )
                     })}
