@@ -907,6 +907,56 @@ const PlanStep: React.FC<WizardProps> = ({ state, updateState, nextStep, prevSte
 const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard, prevStep }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [cardholderName, setCardholderName] = useState('');
+
+  const cardDigits = cardNumber.replace(/\D/g, '');
+  const cardType = (() => {
+    if (/^4/.test(cardDigits)) return 'Visa';
+    if (/^5[1-5]/.test(cardDigits)) return 'Mastercard';
+    if (/^3[47]/.test(cardDigits)) return 'Amex';
+    if (/^6(?:011|5)/.test(cardDigits)) return 'Discover';
+    if (cardDigits.length === 0) return '';
+    return 'Card';
+  })();
+
+  const isLuhnValid = (digits: string) => {
+    let sum = 0;
+    let shouldDouble = false;
+
+    for (let i = digits.length - 1; i >= 0; i -= 1) {
+      let digit = Number(digits[i]);
+      if (shouldDouble) {
+        digit *= 2;
+        if (digit > 9) digit -= 9;
+      }
+      sum += digit;
+      shouldDouble = !shouldDouble;
+    }
+
+    return digits.length >= 13 && sum % 10 === 0;
+  };
+
+  const isCardNumberValid = isLuhnValid(cardDigits);
+
+  const isExpiryValid = (() => {
+    const match = expiry.match(/^(\d{2})\/(\d{2})$/);
+    if (!match) return false;
+
+    const month = Number(match[1]);
+    const year = Number(`20${match[2]}`);
+    if (month < 1 || month > 12) return false;
+
+    const now = new Date();
+    const expiryDate = new Date(year, month, 0, 23, 59, 59);
+    return expiryDate >= now;
+  })();
+
+  const isCvcValid = /^\d{3,4}$/.test(cvc);
+  const isNameValid = cardholderName.trim().length >= 2 && /^[a-zA-Z ]+$/.test(cardholderName.trim());
+  const isFormValid = isCardNumberValid && isExpiryValid && isCvcValid && isNameValid;
 
   // Calculate total medicine cost
   const calculateTotalCost = () => {
@@ -945,6 +995,11 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
     console.log('Selected Plan:', state.selectedPlan);
     console.log('Medicines Count:', state.medicines.length);
     console.log('========================');
+
+    if (!isFormValid) {
+      setError('Enter valid card details to continue.');
+      return;
+    }
 
     // FALBACK: If patientId is missing but id exists (and is a UUID), use id.
     const effectivePatientId = state.patient.patientId || state.patient.id;
@@ -1063,12 +1118,73 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
           </div>
 
           <div className="space-y-4">
-            <Input label="Card Number" placeholder="0000 0000 0000 0000" icon={<CreditCard className="w-4 h-4" />} />
+            <Input
+              label="Card Number"
+              placeholder="1234 5678 9012 3456"
+              icon={<CreditCard className="w-4 h-4" />}
+              rightIcon={cardType ? <span className="text-xs font-medium text-slate-500">{cardType}</span> : undefined}
+              value={cardNumber}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/\D/g, '').slice(0, 19);
+                const groups = digits.match(/.{1,4}/g) || [];
+                setCardNumber(groups.join(' '));
+                if (error) setError(null);
+              }}
+              inputMode="numeric"
+              autoComplete="cc-number"
+            />
+            {cardNumber.length > 0 && !isCardNumberValid && (
+              <p className="-mt-2 text-xs text-amber-600">Enter a valid card number.</p>
+            )}
             <div className="grid grid-cols-2 gap-4">
-              <Input label="Expiry" placeholder="MM/YY" />
-              <Input label="CVC" placeholder="123" />
+              <div>
+                <Input
+                  label="Expiry"
+                  placeholder="MM/YY"
+                  value={expiry}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 4);
+                    const formatted = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits;
+                    setExpiry(formatted);
+                    if (error) setError(null);
+                  }}
+                  inputMode="numeric"
+                  autoComplete="cc-exp"
+                />
+                {expiry.length > 0 && !isExpiryValid && (
+                  <p className="-mt-2 text-xs text-amber-600">Use MM/YY and a future date.</p>
+                )}
+              </div>
+              <div>
+                <Input
+                  label="CVC"
+                  placeholder="123"
+                  value={cvc}
+                  onChange={(e) => {
+                    setCvc(e.target.value.replace(/\D/g, '').slice(0, 4));
+                    if (error) setError(null);
+                  }}
+                  inputMode="numeric"
+                  autoComplete="cc-csc"
+                />
+                {cvc.length > 0 && !isCvcValid && (
+                  <p className="-mt-2 text-xs text-amber-600">CVC should be 3 or 4 digits.</p>
+                )}
+              </div>
             </div>
-            <Input label="Cardholder Name" placeholder="Name on card" />
+            <Input
+              label="Cardholder Name"
+              placeholder="Name on card"
+              value={cardholderName}
+              onChange={(e) => {
+                setCardholderName(e.target.value.replace(/[^a-zA-Z ]/g, ''));
+                if (error) setError(null);
+              }}
+              autoComplete="cc-name"
+            />
+            {cardholderName.length > 0 && !isNameValid && (
+              <p className="-mt-2 text-xs text-amber-600">Enter the name exactly as on your card.</p>
+            )}
           </div>
 
           <div className="mt-8">
@@ -1081,7 +1197,7 @@ const PaymentStep: React.FC<WizardProps> = ({ state, updateState, goToDashboard,
                 </div>
               </div>
             )}
-            <Button onClick={handlePay} isLoading={loading} className="w-full">
+            <Button onClick={handlePay} isLoading={loading} disabled={!isFormValid} className="w-full">
               Pay & Subscribe
             </Button>
             <p className="text-center text-xs text-slate-400 mt-3 flex items-center justify-center">
